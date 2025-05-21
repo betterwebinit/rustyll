@@ -148,4 +148,48 @@ pub enum Commands {
     
     /// Clean the site (removes site output and metadata file) without building
     Clean {},
+    
+    /// Generate a comprehensive report of your site
+    #[command(alias = "r")]
+    Report {
+        /// Source directory (usually _site directory)
+        #[arg(short = 's', long, value_name = "DIR")]
+        source: Option<PathBuf>,
+        
+        /// Print verbose output with detailed analysis
+        #[arg(short = 'v', long, default_value_t = false)]
+        verbose: bool,
+        
+        /// Display report in console instead of generating an HTML file
+        #[arg(short = 'c', long, default_value_t = false)]
+        console: bool,
+        
+        /// Output file path for the HTML report
+        #[arg(short = 'o', long, value_name = "FILE", default_value = "./rustyll-report.html")]
+        output: PathBuf,
+    },
+    
+    /// Migrate a site from another static site generator to Rustyll
+    #[command(alias = "m")]
+    Migrate {
+        /// Source directory containing the site to be migrated
+        #[arg(short, long, value_name = "DIR")]
+        source: Option<PathBuf>,
+        
+        /// Destination directory for the migrated site
+        #[arg(short, long, value_name = "DIR")]
+        destination: Option<PathBuf>,
+        
+        /// Source engine to migrate from (e.g., jekyll, hugo, etc.)
+        #[arg(short = 'e', long, value_name = "ENGINE")]
+        engine: String,
+        
+        /// Print verbose output during migration
+        #[arg(short = 'v', long, default_value_t = false)]
+        verbose: bool,
+        
+        /// Clean the destination directory before migration
+        #[arg(short = 'c', long, default_value_t = false)]
+        clean: bool,
+    },
 } 

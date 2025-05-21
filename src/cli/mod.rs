@@ -42,6 +42,19 @@ pub async fn run() {
         Some(types::Commands::Clean {}) => {
             commands::handle_clean_command();
         },
+        Some(types::Commands::Report { .. }) => {
+            commands::handle_report_command(
+                &cli.command.as_ref().unwrap(),
+                cli.source.as_ref()
+            ).await;
+        },
+        Some(types::Commands::Migrate { .. }) => {
+            commands::handle_migrate_command(
+                &cli.command.as_ref().unwrap(),
+                cli.source.as_ref(),
+                cli.destination.as_ref()
+            ).await;
+        },
         None => {
             // Default to build command if none provided
             let config = match config::load_config(PathBuf::from("."), None) {
