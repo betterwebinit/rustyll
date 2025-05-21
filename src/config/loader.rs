@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::fs;
 use log::{debug, warn};
+use std::collections::HashMap;
 
 use crate::config::types::Config;
 use crate::config::validation;
@@ -97,10 +98,56 @@ fn merge_config_file(config: &mut Config, config_path: &Path) -> BoxResult<()> {
 
 /// Parse a YAML configuration file
 fn parse_yaml_config(content: &str, path: &Path) -> BoxResult<Config> {
-    serde_yaml::from_str(content)
+    // First parse the content as a generic YAML Value to get all top-level keys
+    let yaml_value = serde_yaml::from_str::<serde_yaml::Value>(content)
         .map_err(|e| RustyllError::Config(format!(
             "Failed to parse YAML configuration ({}): {}", path.display(), e
-        )).into())
+        )))?;
+    
+    // Extract all top-level keys and values
+    let mut top_level_keys = HashMap::new();
+    if let serde_yaml::Value::Mapping(map) = &yaml_value {
+        // Collect keys into a Vec so we can print them with debug!
+        let key_list: Vec<_> = map.keys().collect();
+        debug!("Top-level keys found in config: {:?}", key_list);
+        
+        for (key, value) in map {
+            if let serde_yaml::Value::String(key_str) = key {
+                // Store all top-level keys
+                debug!("Processing top-level config key: {} = {:?}", key_str, value);
+                
+                // Skip collection-specific keys that will be handled by the normal deserialization
+                if !["defaults", "exclude", "include", "plugins", "collections"].contains(&key_str.as_str()) {
+                    debug!("Adding key '{}' to top_level_keys", key_str);
+                    top_level_keys.insert(key_str.clone(), value.clone());
+                } else {
+                    debug!("Skipping special key: {}", key_str);
+                }
+            }
+        }
+    }
+    
+    // Then parse into the Config struct
+    let mut config: Config = serde_yaml::from_value(yaml_value.clone())
+        .map_err(|e| RustyllError::Config(format!(
+            "Failed to parse YAML configuration ({}): {}", path.display(), e
+        )))?;
+    
+    // Add all top-level keys to site_data.custom to make them available in templates
+    debug!("Adding top-level keys to site_data.custom:");
+    for (key, value) in top_level_keys {
+        debug!("  - {}: {:?}", key, value);
+        if !config.site_data.custom.contains_key(&key) {
+            config.site_data.custom.insert(key, value);
+        } else {
+            debug!("    (already exists in site_data.custom)");
+        }
+    }
+    
+    // Print all site_data.custom keys for debugging
+    debug!("Final site_data.custom keys: {:?}", config.site_data.custom.keys().collect::<Vec<_>>());
+    
+    Ok(config)
 }
 
 /// Parse a TOML configuration file
@@ -152,6 +199,12 @@ fn merge_configs(target: &mut Config, source: &Config) {
     
     if source.description != crate::config::defaults::default_site_description() {
         target.description = source.description.clone();
+    }
+    
+    // Merge repository field if set
+    if source.repository.is_some() {
+        debug!("Merging repository: {:?}", source.repository);
+        target.repository = source.repository.clone();
     }
     
     // Boolean flags are simply set if they're true in the source

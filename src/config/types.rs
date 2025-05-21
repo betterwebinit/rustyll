@@ -64,6 +64,10 @@ pub struct Config {
     #[serde(default = "defaults::default_site_description")]
     pub description: String,
     
+    /// Repository URL (e.g., GitHub repository)
+    #[serde(default)]
+    pub repository: Option<String>,
+    
     /// Safe mode (disables plugins and some features)
     #[serde(default = "defaults::default_safe_mode")]
     pub safe_mode: bool,
@@ -220,6 +224,7 @@ impl Default for Config {
             base_url: defaults::default_base_url(),
             title: defaults::default_site_title(),
             description: defaults::default_site_description(),
+            repository: None,
             safe_mode: defaults::default_safe_mode(),
             defaults: Vec::new(),
             exclude: defaults::default_exclude(),
@@ -245,6 +250,9 @@ impl Config {
     pub fn to_liquid(&self) -> Object {
         let mut obj = Object::new();
         
+        // Log site_data.custom keys
+        log::debug!("site_data.custom keys: {:?}", self.site_data.custom.keys().collect::<Vec<_>>());
+        
         // Add all config values to the object
         
         // Basic settings
@@ -264,6 +272,12 @@ impl Config {
             obj.insert("author".into(), Value::scalar(author.clone()));
         }
         
+        // Repository URL - explicit field
+        if let Some(repo) = &self.repository {
+            log::debug!("Adding repository: {}", repo);
+            obj.insert("repository".into(), Value::scalar(repo.clone()));
+        }
+        
         // URL settings
         obj.insert("baseurl".into(), Value::scalar(self.base_url.clone()));
         
@@ -272,7 +286,9 @@ impl Config {
         }
         
         // Custom variables from site_data.custom - the most important part!
+        log::debug!("Processing custom variables from site_data.custom:");
         for (key, value) in &self.site_data.custom {
+            log::debug!("  - Adding to site object: '{}' = {:?}", key, value);
             obj.insert(key.clone().into(), yaml_to_liquid(value.clone()));
         }
         
@@ -280,6 +296,9 @@ impl Config {
         obj.insert("markdown".into(), Value::scalar(self.markdown_ext.join(", ")));
         obj.insert("highlighter".into(), Value::scalar(self.highlighter.clone()));
         obj.insert("permalink".into(), Value::scalar(self.permalink.clone()));
+        
+        // Debug which keys are available
+        log::debug!("Final site object keys: {:?}", obj.keys().collect::<Vec<_>>());
         
         obj
     }

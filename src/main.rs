@@ -12,6 +12,8 @@ mod liquid;
 mod cli;
 mod utils;
 mod layout;
+mod report;
+mod migrate;
 
 #[tokio::main]
 async fn main() {

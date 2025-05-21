@@ -24,70 +24,58 @@ impl IncludeTag {
         let includes_dir = self.config.source.join(&self.config.includes_dir);
         let file_path = includes_dir.join(name);
         
+        info!("Looking for include file at: {}", file_path.display());
+        
         // Check if this is a binary file that we should skip
         if crate::builder::processor::is_binary_file(&file_path) {
             log::info!("Skipping binary file in include: {}", file_path.display());
             return Ok(format!("<!-- Binary file skipped: {} -->", name));
         }
         
-        if let Ok(content) = fs::read_to_string(&file_path) {
-            Ok(content)
-        } else {
-            Err(Error::with_msg(format!("Could not read include file: {}", file_path.display())))
+        // Try to read the file
+        match fs::read_to_string(&file_path) {
+            Ok(content) => {
+                info!("Successfully read include file: {}", file_path.display());
+                Ok(content)
+            },
+            Err(e) => {
+                error!("Failed to read include file: {} - Error: {}", file_path.display(), e);
+                
+                // Also check for alternative path formulations (replace slashes with underscores, etc.)
+                // This is for compatibility with some Jekyll themes
+                let alt_name = name.replace('/', "_");
+                if alt_name != name {
+                    let alt_path = includes_dir.join(alt_name);
+                    info!("Trying alternative include path: {}", alt_path.display());
+                    
+                    if let Ok(content) = fs::read_to_string(&alt_path) {
+                        info!("Successfully read include file from alternative path: {}", alt_path.display());
+                        return Ok(content);
+                    }
+                }
+                
+                // List files in the includes directory for debugging
+                if let Ok(entries) = fs::read_dir(&includes_dir) {
+                    info!("Available files in _includes directory:");
+                    for entry in entries {
+                        if let Ok(entry) = entry {
+                            info!("  {}", entry.path().display());
+                        }
+                    }
+                }
+                
+                Err(Error::with_msg(format!("Could not read include file: {}", file_path.display())))
+            }
         }
-    }
-}
-
-struct IncludeTagReflection;
-
-impl TagReflection for IncludeTagReflection {
-    fn tag(&self) -> &str {
-        "include"
-    }
-
-    fn description(&self) -> &str {
-        "Include content from another file from the _includes directory"
-    }
-}
-
-impl ParseTag for IncludeTag {
-    fn reflection(&self) -> &dyn TagReflection {
-        &IncludeTagReflection
     }
     
-    fn parse(&self, mut arguments: TagTokenIter, _options: &liquid_core::parser::Language) -> Result<Box<dyn Renderable>, Error> {
-        // First get the actual filename
-        let filename_token = arguments.next().ok_or_else(|| Error::with_msg("Include tag requires a filename argument"))?;
-        let filename = filename_token.as_str().to_string();
-        let is_variable = filename.starts_with("{{") && filename.ends_with("}}");
-        
-        // Clean up the filename - strip quotes if present
-        let filename = if !is_variable {
-            filename.trim_matches('"').trim_matches('\'').to_string()
-        } else {
-            filename
-        };
-        
-        info!("Include filename: '{}'", filename);
-        
-        // Collect all the parameter arguments
-        let mut params_str = String::new();
-        while let Some(token) = arguments.next() {
-            let token_str = token.as_str().to_string();
-            if !params_str.is_empty() {
-                params_str.push(' ');
-            }
-            params_str.push_str(&token_str);
-        }
-        
-        info!("Include raw args: '{}'", params_str);
-        
-        // Parse parameters from the arguments string
+    // Add helper method to parse parameters
+    fn parse_parameters(&self, params_str: &str) -> HashMap<String, String> {
         let mut params = HashMap::new();
         
         // Parse parameters using regex - this regex handles key=value pairs where value can be quoted or unquoted
         let re = regex::Regex::new(r#"([^=\s]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))"#).unwrap();
-        for cap in re.captures_iter(&params_str) {
+        for cap in re.captures_iter(params_str) {
             let key = cap[1].trim().to_string();
             
             // The value could be in capture group 2 (double quotes), 3 (single quotes), or 4 (unquoted)
@@ -109,10 +97,104 @@ impl ParseTag for IncludeTag {
             params.insert(key, value);
         }
         
+        params
+    }
+}
+
+struct IncludeTagReflection;
+
+impl TagReflection for IncludeTagReflection {
+    fn tag(&self) -> &str {
+        "include"
+    }
+
+    fn description(&self) -> &str {
+        "Include content from another file from the _includes directory"
+    }
+}
+
+impl ParseTag for IncludeTag {
+    fn reflection(&self) -> &dyn TagReflection {
+        &IncludeTagReflection
+    }
+    
+    fn parse(&self, mut arguments: TagTokenIter, _options: &liquid_core::parser::Language) -> Result<Box<dyn Renderable>, Error> {
+        // First get the argument which might be a filename or a path with parameters
+        let first_arg = arguments.next().ok_or_else(|| Error::with_msg("Include tag requires a filename argument"))?;
+        let mut first_arg_str = first_arg.as_str().to_string();
+        
+        // Log all incoming tokens for debugging
+        info!("Include tag first argument: '{}'", first_arg_str);
+        let mut all_remaining_tokens = Vec::new();
+        while let Some(token) = arguments.next() {
+            all_remaining_tokens.push(token.as_str().to_string());
+        }
+        info!("Include tag remaining tokens: {:?}", all_remaining_tokens);
+        
+        // Reset arguments iterator
+        let mut arguments = all_remaining_tokens.iter();
+        
+        // Handle "-" trim directive at the end of the filename
+        if first_arg_str.ends_with('-') {
+            first_arg_str = first_arg_str[..first_arg_str.len()-1].to_string();
+            info!("Removed trailing dash (trim directive) from filename: '{}'", first_arg_str);
+        }
+        
+        // Check if this is a Liquid variable (starts with {{ and ends with }})
+        let is_variable = first_arg_str.trim().starts_with("{{") && first_arg_str.trim().ends_with("}}");
+        
+        // If it's a variable, keep it as is
+        if is_variable {
+            let filename = first_arg_str;
+            info!("Include filename (variable): '{}'", filename);
+            
+            // Collect all the parameter arguments
+            let mut params = HashMap::new();
+            // Parse parameters if any are left
+            if !all_remaining_tokens.is_empty() {
+                let params_str = all_remaining_tokens.join(" ");
+                params = self.parse_parameters(&params_str);
+            }
+            
+            return Ok(Box::new(IncludeTagRenderer {
+                config: self.config.clone(),
+                filename,
+                is_variable,
+                params,
+            }));
+        }
+        
+        // For regular paths, handle slashes directly in the filename
+        // Remove quotes if present
+        let mut filename = first_arg_str.trim_matches('"').trim_matches('\'').to_string();
+        let mut tokens_for_params = Vec::new();
+        
+        // Collect parameter arguments
+        for token_str in arguments {
+            // If it contains an equals sign, it's a parameter
+            if token_str.contains('=') {
+                tokens_for_params.push(token_str.clone());
+            } else {
+                // Otherwise it's likely part of a parameter value
+                tokens_for_params.push(token_str.clone());
+            }
+        }
+        
+        // Join all parameter tokens
+        let params_str = tokens_for_params.join(" ");
+        
+        info!("Include final filename: '{}'", filename);
+        if !params_str.is_empty() {
+            info!("Include parameters: '{}'", params_str);
+        }
+        
+        // Parse parameters
+        let params = self.parse_parameters(&params_str);
+        
         Ok(Box::new(IncludeTagRenderer {
             config: self.config.clone(),
             filename,
-            is_variable,
+            is_variable: false,
             params,
         }))
     }
@@ -156,9 +238,7 @@ impl Renderable for IncludeTagRenderer {
         
         // Create a new scope for the include with parameters
         let mut include_scope = create_default_include_globals();
-        
-        info!("Initial include scope with defaults: {:?}", include_scope);
-        
+
         // Add the parameters to the include scope
         for (key, value_str) in &self.params {
             info!("Processing param: {}='{}'", key, value_str);
@@ -250,8 +330,11 @@ impl Renderable for IncludeTagRenderer {
         
         info!("Full globals context: {:?}", globals);
         
+        // Preprocess the content to fix any include tags inside it
+        let preprocessed_content = crate::liquid::preprocess::preprocess_liquid(&content);
+        
         // Parse and render the include content - decode HTML entities first
-        let decoded_content = html_escape::decode_html_entities(&content).to_string();
+        let decoded_content = html_escape::decode_html_entities(&preprocessed_content).to_string();
         let template = match options.parse(&decoded_content) {
             Ok(t) => t,
             Err(e) => {
