@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if page.title %}{{ page.title }}{% else %}Rustyll Demo Site{% endif %}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #24292e;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header, footer {
+            margin-bottom: 2rem;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .post-meta {
+            color: #6a737d;
+            font-size: 0.875rem;
+        }
+        .wrapper {
+            padding: 0 1rem;
+        }
+        .site-nav a {
+            margin-right: 1rem;
+        }
+    </style>
+</head>
+<body>
+    {% include header.html show_logo=true logo_path="/assets/images/rustyll-logo.png" %}
+
+    <main class="wrapper">
+        {{ content }}
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrapper">
+        <p>&copy; 2023 Rustyll - A Jekyll-compatible static site generator built in Rust</p>
+        <p>Created with ❤️ by the Rustyll team</p>
+      </div>
+    </footer>
+</body>
+</html> 
