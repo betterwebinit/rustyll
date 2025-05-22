@@ -226,11 +226,24 @@ Usage in templates:
 ```
 
 ### Implementing an Asset Pipeline
-
+User can control toggle feature each on and off in config.yml
 A Rust SSG could implement a similar asset pipeline using crates for:
 * Sass compilation ([grass](https://crates.io/crates/grass))
+* Css minification ([lightningcss](https://lightningcss.dev/docs.html))
+* Tailwind integration 
 * JavaScript minification ([minify-js](https://crates.io/crates/minify-js))
 * Image optimization ([oxipng](https://crates.io/crates/oxipng))
+* Convert images to webp
+* Convert videos to webm
+* Bundle assets into a single file
+* Cache busting with fingerprinting
+* Use a build step to generate the assets
+* Minify html
+
+
+* Sitemap generation
+* RSS feed generation
+
 
 Example implementation pattern:
 

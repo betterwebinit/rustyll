@@ -43,7 +43,7 @@ pub async fn handle_migrate_command(
                 // Set up migration options
                 let options = migrate::MigrationOptions {
                     source_dir: source_dir.clone(),
-                    destination_dir: destination_dir.clone(),
+                    dest_dir: destination_dir.clone(),
                     verbose: *verbose,
                     clean: *clean,
                 };

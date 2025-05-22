@@ -3,7 +3,7 @@ name = "rustyll"
 version = "0.1.0"
 edition = "2021"
 description = "A fast Jekyll-compatible static site generator written in Rust"
-authors = ["Jekyll RS Team"]
+authors = ["Rustyll Team"]
 
 [features]
 default = []
@@ -53,6 +53,8 @@ urlencoding = "2.1"
 slug = "0.1"
 serde_json = "1.0"
 csv = "1.1"
+yaml-front-matter = "0.1.0"
+yaml-rust = "0.4.5"
 
 [profile.release]
 lto = true
