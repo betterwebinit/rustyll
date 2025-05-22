@@ -55,6 +55,11 @@ pub async fn run() {
                 cli.destination.as_ref()
             ).await;
         },
+        Some(types::Commands::New { .. }) => {
+            commands::handle_new_command(
+                &cli.command.as_ref().unwrap()
+            ).await;
+        },
         None => {
             // Default to build command if none provided
             let config = match config::load_config(PathBuf::from("."), None) {

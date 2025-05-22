@@ -192,4 +192,23 @@ pub enum Commands {
         #[arg(short = 'c', long, default_value_t = false)]
         clean: bool,
     },
+    
+    /// Creates a new Rustyll site scaffold in PATH
+    #[command(alias = "n")]
+    New {
+        /// Path where the new site will be created
+        path: PathBuf,
+        
+        /// Force creation even if PATH already exists
+        #[arg(long, default_value_t = false)]
+        force: bool,
+        
+        /// Creates scaffolding but with empty files
+        #[arg(long, default_value_t = false)]
+        blank: bool,
+        
+        /// Skip 'bundle install'
+        #[arg(long, default_value_t = false)]
+        skip_bundle: bool,
+    },
 } 
