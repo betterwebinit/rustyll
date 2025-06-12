@@ -51,9 +51,11 @@ mod tests {
             title: Some("Original Title".to_string()),
             layout: None,
             permalink: None,
+            description: None,
             date: None,
             categories: None,
             tags: None,
+            author: None,
             published: None,
             excerpt_separator: None,
             custom: {
@@ -67,9 +69,11 @@ mod tests {
             title: Some("New Title".to_string()),
             layout: Some("default".to_string()),
             permalink: Some("/custom/url/".to_string()),
+            description: None,
             date: None,
             categories: None,
             tags: None,
+            author: None,
             published: None,
             excerpt_separator: None,
             custom: {
