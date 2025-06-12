@@ -2,6 +2,7 @@ mod markdownify;
 mod relative_url;
 mod absolute_url;
 mod date_to_string;
+mod shuffle;
 
 use liquid::ParserBuilder;
 use crate::config::Config;
@@ -28,6 +29,10 @@ pub fn register_filters(parser_builder: ParserBuilder, config: &Config) -> Parse
     // Add date_to_string filter
     let parser_builder = parser_builder
         .filter(date_to_string::DateToStringFilterParser);
+
+    // Add shuffle filter
+    let parser_builder = parser_builder
+        .filter(shuffle::ShuffleFilterParser);
     
     parser_builder
 }
@@ -36,4 +41,5 @@ pub fn register_filters(parser_builder: ParserBuilder, config: &Config) -> Parse
 pub use markdownify::MarkdownifyFilterParser;
 pub use relative_url::RelativeUrlFilterParser;
 pub use absolute_url::AbsoluteUrlFilterParser;
-pub use date_to_string::DateToStringFilterParser; 
+pub use date_to_string::DateToStringFilterParser;
+pub use shuffle::ShuffleFilterParser;

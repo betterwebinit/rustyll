@@ -47,6 +47,7 @@ comrak = "0.39"
 syntect = "5.1"
 html-escape = "0.2"
 regex = "1.10.3"
+rand = "0.8"
 
 # For utility functions
 urlencoding = "2.1"

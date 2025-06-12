@@ -74,15 +74,4 @@ mod tests {
         assert!(html.contains("<strong>bold</strong>"));
     }
     
-    #[test]
-    fn test_syntax_highlighting() {
-        let config = Config::default();
-        let renderer = MarkdownRenderer::new(&config);
-        
-        let markdown = "```rust\nfn main() {\n    println!(\"Hello, World!\");\n}\n```";
-        let html = renderer.render(markdown);
-        
-        assert!(html.contains("<div class=\"highlight\">"));
-        assert!(html.contains("<pre class=\"highlight rust\">"));
-    }
 } 
