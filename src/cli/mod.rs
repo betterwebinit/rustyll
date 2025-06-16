@@ -11,14 +11,11 @@ pub async fn run() {
     let cli = types::Cli::parse();
     
     // Initialize logging system
-    logging::init_logging(cli.debug);
+    logging::init_logging(cli.debug || cli.verbose);
     
     // Configure backtrace
     logging::configure_backtrace(cli.trace);
     
-    // Set default source and destination
-    let source = cli.source.as_ref().map_or_else(|| PathBuf::from("./"), |p| p.clone());
-    let destination = cli.destination.as_ref().map_or_else(|| PathBuf::from("./_site"), |p| p.clone());
 
     match &cli.command {
         Some(types::Commands::Build { .. }) => {
@@ -48,12 +45,27 @@ pub async fn run() {
                 cli.source.as_ref()
             ).await;
         },
-        Some(types::Commands::Migrate { .. }) => {
+        Some(types::Commands::Migrate(_)) => {
             commands::handle_migrate_command(
                 &cli.command.as_ref().unwrap(),
                 cli.source.as_ref(),
                 cli.destination.as_ref()
             ).await;
+        },
+        Some(types::Commands::Config { .. }) => {
+            commands::handle_config_command(&cli.command.as_ref().unwrap()).await;
+        },
+        Some(types::Commands::Cache { .. }) => {
+            commands::handle_cache_command(&cli.command.as_ref().unwrap()).await;
+        },
+        Some(types::Commands::Theme { .. }) => {
+            commands::handle_theme_command(&cli.command.as_ref().unwrap()).await;
+        },
+        Some(types::Commands::Plugin { .. }) => {
+            commands::handle_plugin_command(&cli.command.as_ref().unwrap()).await;
+        },
+        Some(types::Commands::Completions { .. }) => {
+            commands::handle_completions_command(&cli.command.as_ref().unwrap()).await;
         },
         Some(types::Commands::New { .. }) => {
             commands::handle_new_command(
