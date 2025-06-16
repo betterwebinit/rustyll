@@ -229,4 +229,14 @@ pub fn generate_migration_report(result: &MigrationResult, dest_dir: &Path) -> R
         .map_err(|e| format!("Failed to write migration report: {}", e))?;
     
     Ok(report_path)
-} 
+}
+
+/// Return the list of supported engine names
+pub fn list_engines() -> Vec<&'static str> {
+    vec![
+        "jekyll", "hugo", "zola", "eleventy", "gatsby", "docsy", "mdbook",
+        "mkdocs", "gitbook", "slate", "pelican", "nanoc", "middleman",
+        "assemble", "bridgetown", "cobalt", "fresh", "harp", "jigsaw",
+        "metalsmith", "nikola", "octopress",
+    ]
+}

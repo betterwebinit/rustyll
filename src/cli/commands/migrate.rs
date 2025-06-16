@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use crate::cli::types::Commands;
+use crate::cli::types::{Commands, MigrateCommands};
 use crate::migrate;
 
 pub async fn handle_migrate_command(
@@ -7,7 +7,7 @@ pub async fn handle_migrate_command(
     source_dir: Option<&PathBuf>,
     destination_dir: Option<&PathBuf>
 ) {
-    if let Commands::Migrate { source, destination, engine, verbose, clean } = command {
+    if let Commands::Migrate(MigrateCommands::Run { source, destination, engine, verbose, clean }) = command {
         // Determine source and destination directories
         let source_dir = if let Some(s) = source {
             s.clone()
@@ -86,5 +86,11 @@ pub async fn handle_migrate_command(
                 }
             }
         }
+    } else if let Commands::Migrate(MigrateCommands::ListPlatforms {}) = command {
+        let engines = migrate::list_engines();
+        println!("Available engines:");
+        for e in engines {
+            println!("- {}", e);
+        }
     }
-} 
+}

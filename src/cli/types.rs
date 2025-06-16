@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 use std::path::PathBuf;
 
 /// Main CLI parser structure
@@ -37,6 +38,10 @@ pub struct Cli {
     /// Enable verbose debugging
     #[arg(short = 'g', long, default_value_t = false)]
     pub debug: bool,
+
+    /// Print verbose output
+    #[arg(short, long, default_value_t = false)]
+    pub verbose: bool,
 }
 
 /// Subcommands for the CLI
@@ -169,29 +174,6 @@ pub enum Commands {
         output: PathBuf,
     },
     
-    /// Migrate a site from another static site generator to Rustyll
-    #[command(alias = "m")]
-    Migrate {
-        /// Source directory containing the site to be migrated
-        #[arg(short, long, value_name = "DIR")]
-        source: Option<PathBuf>,
-        
-        /// Destination directory for the migrated site
-        #[arg(short, long, value_name = "DIR")]
-        destination: Option<PathBuf>,
-        
-        /// Source engine to migrate from (e.g., jekyll, hugo, etc.)
-        #[arg(short = 'e', long, value_name = "ENGINE")]
-        engine: String,
-        
-        /// Print verbose output during migration
-        #[arg(short = 'v', long, default_value_t = false)]
-        verbose: bool,
-        
-        /// Clean the destination directory before migration
-        #[arg(short = 'c', long, default_value_t = false)]
-        clean: bool,
-    },
     
     /// Creates a new Rustyll site scaffold in PATH
     #[command(alias = "n")]
@@ -211,4 +193,107 @@ pub enum Commands {
         #[arg(long, default_value_t = false)]
         skip_bundle: bool,
     },
-} 
+
+    /// Manage configuration values
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+
+    /// Manage build cache
+    Cache {
+        #[command(subcommand)]
+        action: CacheAction,
+    },
+
+    /// Manage themes
+    Theme {
+        #[command(subcommand)]
+        action: ThemeAction,
+    },
+
+    /// Manage plugins
+    Plugin {
+        #[command(subcommand)]
+        action: PluginAction,
+    },
+
+    /// Generate shell completion scripts
+    Completions {
+        /// Shell type (bash, zsh, fish, powershell, elvish)
+        #[arg(value_enum)]
+        shell: Shell,
+    },
+
+    /// Migration utilities
+    #[command(name = "migrate", alias = "m", subcommand)]
+    Migrate(MigrateCommands),
+}
+
+#[derive(Subcommand)]
+pub enum MigrateCommands {
+    /// Perform a migration from another static site generator
+    Run {
+        /// Source directory containing the site to be migrated
+        #[arg(short, long, value_name = "DIR")]
+        source: Option<PathBuf>,
+
+        /// Destination directory for the migrated site
+        #[arg(short, long, value_name = "DIR")]
+        destination: Option<PathBuf>,
+
+        /// Source engine to migrate from (e.g., jekyll, hugo, etc.)
+        #[arg(short = 'e', long, value_name = "ENGINE")]
+        engine: String,
+
+        /// Print verbose output during migration
+        #[arg(short = 'v', long, default_value_t = false)]
+        verbose: bool,
+
+        /// Clean the destination directory before migration
+        #[arg(short = 'c', long, default_value_t = false)]
+        clean: bool,
+    },
+
+    /// List supported migration engines
+    ListPlatforms {},
+}
+
+#[derive(Subcommand)]
+pub enum ConfigAction {
+    /// Get value for a key
+    Get { key: String },
+    /// Set configuration key
+    Set { key: String, value: String },
+    /// List all keys
+    List {},
+}
+
+#[derive(Subcommand)]
+pub enum CacheAction {
+    /// Clear cache
+    Clear { kind: Option<String> },
+    /// Show cache status
+    Status {},
+}
+
+#[derive(Subcommand)]
+pub enum ThemeAction {
+    /// Install a theme
+    Install { name_or_url: String },
+    /// List installed themes
+    List {},
+    /// Apply a theme
+    Apply { name: String },
+}
+
+#[derive(Subcommand)]
+pub enum PluginAction {
+    /// Install a plugin
+    Install { name: String },
+    /// List installed plugins
+    List {},
+    /// Enable a plugin
+    Enable { name: String },
+}
+
