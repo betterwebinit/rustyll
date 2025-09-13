@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::error::Error;
 use liquid::{Parser, ParserBuilder, Object, ValueView};
 use liquid::model::Value;
-use liquid::partials::{InMemorySource, EagerCompiler};
 use crate::config::Config;
 use log;
 use html_escape;

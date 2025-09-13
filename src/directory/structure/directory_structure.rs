@@ -54,21 +54,21 @@ impl DirectoryStructure {
         let theme_assets_dir = None;
         
         DirectoryStructure {
-            source: source.clone(),
-            destination: destination.clone(),
-            layouts_dir,
-            includes_dir,
-            posts_dir,
-            drafts_dir,
-            data_dir,
+            source: config.source.clone(),
+            destination: config.destination.clone(),
+            layouts_dir: config.layouts_dir.clone(),
+            includes_dir: config.includes_dir.clone(),
+            data_dir: config.data_dir.clone(),
+            posts_dir: posts_dir,
+            drafts_dir: drafts_dir,
             sass_dir,
             plugins_dir,
             theme_layouts_dir,
             theme_includes_dir,
             theme_sass_dir,
             theme_assets_dir,
-            exclude_patterns: config.exclude.clone(),
-            include_patterns: config.include.clone(),
+            exclude_patterns: config.exclude.clone().unwrap_or_default(),
+            include_patterns: config.include.clone().unwrap_or_default(),
         }
     }
     
@@ -117,5 +117,42 @@ impl DirectoryStructure {
         path.starts_with(&self.includes_dir) ||
         path.starts_with(&self.data_dir) ||
         path.starts_with(&self.plugins_dir)
+    }
+    
+    /// Get static files in the source directory
+    pub fn get_static_files(&self) -> BoxResult<Vec<(PathBuf, PathBuf)>> {
+        let mut static_files = Vec::new();
+        let source_path = &self.source;
+        let dest_path = &self.destination;
+        
+        let walker = walkdir::WalkDir::new(source_path)
+            .follow_links(true)
+            .into_iter()
+            .filter_entry(|e| {
+                let path = e.path();
+                !self.is_excluded(path) && !self.is_special_directory(path)
+            });
+            
+        for entry in walker.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            
+            // Skip directories
+            if path.is_dir() {
+                continue;
+            }
+            
+            // Skip special directories
+            if self.is_special_directory(path) {
+                continue;
+            }
+            
+            // Compute destination path
+            let rel_path = path.strip_prefix(source_path)?;
+            let dest_file = dest_path.join(rel_path);
+            
+            static_files.push((path.to_path_buf(), dest_file));
+        }
+        
+        Ok(static_files)
     }
 } 

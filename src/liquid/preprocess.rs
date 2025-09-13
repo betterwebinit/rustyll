@@ -60,7 +60,65 @@ pub fn preprocess_liquid(content: &str) -> String {
         format!("{} -%}}", prefix)
     }).to_string();
     
+    // Apply each preprocessor function in sequence
+    let content = normalize_hyphenated_variables(&content);
+    let content = convert_include_equals_to_colons(&content);
+    
     // Return the preprocessed content
     debug!("Preprocessed liquid content");
     content
+}
+
+/// Convert equals signs to colons in include tag parameters
+/// For example: {% include file.html param=value %} -> {% include file.html param: value %}
+fn convert_include_equals_to_colons(content: &str) -> String {
+    lazy_static::lazy_static! {
+        // This regex finds include tags with parameters using equals signs
+        static ref INCLUDE_PARAMS_RE: Regex = Regex::new(
+            r#"(\{%\s*include\s+(?:"[^"]+"|'[^']+'|[^\s"']+)(?:\s+[a-zA-Z0-9_-]+))=([^%}]+%\})"#
+        ).unwrap();
+    }
+    
+    let result = INCLUDE_PARAMS_RE.replace_all(content, |caps: &regex::Captures| {
+        let before_equals = &caps[1]; // {% include file.html param
+        let after_equals = &caps[2];  // value %}
+        
+        let result = format!("{}: {}", before_equals, after_equals);
+        info!("Converting include parameter: '{}={}' -> '{}'", 
+              before_equals, after_equals, result);
+        
+        result
+    }).to_string();
+    
+    result
+}
+
+/// Normalize hyphenated variable names to use bracket notation
+/// For example: {{site.data.primary-nav-items}} -> {{site.data["primary-nav-items"]}}
+fn normalize_hyphenated_variables(content: &str) -> String {
+    lazy_static::lazy_static! {
+        // This regex looks for variable references with hyphens that aren't already using bracket notation
+        static ref HYPHEN_VAR_RE: Regex = Regex::new(
+            r#"(\{\{\s*|\{\{-\s*|\|\s*)([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)\.([a-zA-Z0-9_]+-[a-zA-Z0-9_-]+)([^}|.]*)(\s*\}\}|\s*-\}\}|\s*\|)"#
+        ).unwrap();
+    }
+    
+    let result = HYPHEN_VAR_RE.replace_all(content, |caps: &regex::Captures| {
+        let prefix = &caps[1];    // {{ or {{- or | 
+        let base = &caps[2];      // site.data
+        let hyphen_part = &caps[3]; // primary-nav-items (matched group with hyphen)
+        let suffix_part = &caps[4];  // any trailing part after the hyphenated name
+        let end = &caps[5];       // }} or -}} or |
+        
+        let bracket_format = format!("{}{}[\"{}\"]{}{}",
+            prefix, base, hyphen_part, suffix_part, end);
+        
+        info!("Normalized hyphenated variable: {} -> {}", 
+              format!("{}{}.{}{}{}", prefix, base, hyphen_part, suffix_part, end),
+              bracket_format);
+              
+        bracket_format
+    }).to_string();
+    
+    result
 } 

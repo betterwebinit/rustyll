@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use liquid::model::Value;
-use liquid::Object;
 
 use crate::builder::page::Page;
 

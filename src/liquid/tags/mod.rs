@@ -2,6 +2,7 @@ mod include;
 mod include_relative;
 mod link;
 mod raw;
+mod highlight;
 pub mod utils;
 
 use crate::config::Config;
@@ -21,6 +22,9 @@ pub fn register_tags(parser_builder: ParserBuilder, config: &Config) -> ParserBu
     // Register the raw block tag
     let parser_builder = parser_builder.block(raw::RawBlock::new());
     
+    // Register the highlight block tag
+    let parser_builder = parser_builder.block(highlight::HighlightBlock::new(config.clone()));
+    
     // If highlighting is enabled
     if config.highlighter == "rouge" || config.highlighter == "pygments" {
         // Just return the parser as is - we'll rely on the built-in highlight support from liquid
@@ -30,7 +34,4 @@ pub fn register_tags(parser_builder: ParserBuilder, config: &Config) -> ParserBu
     }
 }
 
-pub use include::IncludeTag;
-pub use include_relative::IncludeRelativeTag;
-pub use link::LinkTag;
-pub use raw::RawBlock; 
+ 

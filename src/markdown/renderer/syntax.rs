@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use syntect::highlighting::{ThemeSet, Theme};
+use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 use syntect::html::{ClassedHTMLGenerator, ClassStyle};
 use syntect::util::LinesWithEndings;

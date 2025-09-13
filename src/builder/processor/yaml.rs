@@ -1,4 +1,4 @@
-use liquid::model::{Value as LiquidValue, ScalarCow};
+use liquid::model::{Value as LiquidValue};
 use serde_yaml::Value as YamlValue;
 
 /// Convert YAML value to Liquid value

@@ -1,5 +1,4 @@
 use regex::Regex;
-use crate::markdown::types::BoxResult;
 
 /// Strip markdown formatting from text
 pub fn strip_markdown(text: &str) -> String {

@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
 
-use crate::config::CollectionConfig;
 
 /// Get the default permalink pattern based on collection name
 pub fn get_permalink_pattern(collection_name: &str) -> String {

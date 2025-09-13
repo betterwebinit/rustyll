@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 pub async fn check_lighthouse(source_dir: &Path, verbose: bool) -> Result<f32, String> {
     if verbose {

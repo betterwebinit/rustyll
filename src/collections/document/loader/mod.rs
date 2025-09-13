@@ -1,9 +1,7 @@
 mod parsers;
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::error::Error;
+use std::path::Path;
 use log::{info, debug};
 use walkdir::WalkDir;
 
@@ -11,7 +9,7 @@ use crate::config::{Config, CollectionConfig};
 use crate::collections::document::model::{Collection, Document};
 use crate::collections::types::BoxResult;
 
-pub use parsers::{parse_document, parse_post, parse_draft, extract_date_from_filename};
+pub use parsers::{parse_document, parse_post, parse_draft};
 
 /// Load collections from the filesystem based on configuration
 pub fn load_collections(config: &Config) -> BoxResult<HashMap<String, Collection>> {

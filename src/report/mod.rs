@@ -4,20 +4,28 @@ mod links;
 mod seo;
 mod performance;
 
-pub use lighthouse::check_lighthouse;
-pub use accessibility::check_accessibility;
-pub use links::check_broken_links;
-pub use seo::check_seo;
-pub use performance::check_performance;
 
 use std::path::Path;
+use std::time::Duration;
+use crate::config::Config;
 
 pub struct ReportOptions {
     pub verbose: bool,
     pub console_output: bool,
 }
 
+/// Site report structure
 pub struct SiteReport {
+    /// Site title
+    pub title: String,
+    /// Build time
+    pub build_time: Duration,
+    /// Number of pages
+    pub num_pages: usize,
+    /// Number of posts
+    pub num_posts: usize,
+    /// Number of collections
+    pub num_collections: usize,
     pub lighthouse_score: Option<f32>,
     pub accessibility_issues: Vec<String>,
     pub broken_links: Vec<String>,
@@ -27,6 +35,11 @@ pub struct SiteReport {
 
 pub async fn generate_report(source_dir: &Path, options: ReportOptions) -> Result<SiteReport, String> {
     let mut report = SiteReport {
+        title: String::new(),
+        build_time: Duration::new(0, 0),
+        num_pages: 0,
+        num_posts: 0,
+        num_collections: 0,
         lighthouse_score: None,
         accessibility_issues: Vec::new(),
         broken_links: Vec::new(),
@@ -213,4 +226,27 @@ pub fn generate_console_report(report: &SiteReport, verbose: bool) -> String {
     }
 
     output
+}
+
+/// Generate a build report
+pub fn generate_build_report(config: &Config, elapsed: std::time::Duration) -> Result<(), Box<dyn std::error::Error>> {
+    let report = SiteReport {
+        title: config.title.clone(),
+        build_time: elapsed,
+        num_pages: 0, // These would need to be passed in as parameters
+        num_posts: 0,
+        num_collections: config.collections.items.len(),
+        lighthouse_score: None,
+        accessibility_issues: Vec::new(),
+        broken_links: Vec::new(),
+        seo_issues: Vec::new(),
+        performance_issues: Vec::new(),
+    };
+    
+    let html = generate_html_report(&report);
+    
+    let report_path = Path::new(&config.destination).join("build-report.html");
+    std::fs::write(report_path, html)?;
+    
+    Ok(())
 } 

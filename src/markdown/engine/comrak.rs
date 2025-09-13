@@ -1,6 +1,4 @@
 use comrak::Options;
-use crate::config::Config;
-use crate::markdown::types::BoxResult;
 
 /// Create default ComrakOptions with GitHub Flavored Markdown settings
 pub fn create_comrak_options<'a>() -> Options<'a> {

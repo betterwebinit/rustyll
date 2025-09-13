@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::ffi::OsStr;
 
 /// Normalize a path, resolving ".." and "." components
 pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {

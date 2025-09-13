@@ -32,8 +32,4 @@ pub fn register_filters(parser_builder: ParserBuilder, config: &Config) -> Parse
     parser_builder
 }
 
-// Re-export the filter types
-pub use markdownify::MarkdownifyFilterParser;
-pub use relative_url::RelativeUrlFilterParser;
-pub use absolute_url::AbsoluteUrlFilterParser;
-pub use date_to_string::DateToStringFilterParser; 
+ 

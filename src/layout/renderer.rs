@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use liquid::Parser;
 use liquid::model::Value;
-use log::{debug, error};
+use log::debug;
 
 use crate::config::Config;
 use crate::utils::error::{BoxResult, RustyllError};

@@ -1,5 +1,4 @@
 use liquid::model::Value;
-use liquid::Object;
 
 use crate::collections::document::model::Document;
 

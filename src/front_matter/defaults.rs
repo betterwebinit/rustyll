@@ -1,158 +1,243 @@
-use std::collections::HashMap;
-use std::path::Path;
-use std::error::Error;
-use crate::config::Config;
+use std::path::{Path, PathBuf};
+use glob::Pattern;
+use log::debug;
+use crate::config::{Config, FrontMatterDefault};
 use crate::front_matter::FrontMatter;
 
-type BoxResult<T> = Result<T, Box<dyn Error>>;
-
-/// Apply default front matter values to files based on path scopes
-pub fn apply_defaults_to_paths<'a>(config: &Config, paths: &'a [&'a Path]) -> HashMap<&'a Path, FrontMatter> {
-    let mut result = HashMap::new();
+/// Apply front matter defaults to a specific file
+pub fn apply_defaults_to_front_matter(
+    front_matter: &mut FrontMatter, 
+    file_path: &Path, 
+    config: &Config
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Get collection from path context instead of front_matter
+    let collection_name = "";
     
-    // Initialize with empty front matter for all paths
-    for path in paths {
-        result.insert(*path, FrontMatter::new());
-    }
-    
-    // Apply defaults in order
-    for default in &config.defaults {
-        // Check paths against scope
-        for path in paths {
-            let front_matter = result.get_mut(path).unwrap();
-            
-            // Check if this path matches the scope
-            if path_matches_scope(path, &default.scope, config) {
-                // Apply default values
-                apply_defaults_to_front_matter(front_matter, &default.values);
+    // Start with defaults from collection configuration
+    if !collection_name.is_empty() {
+        if let Some(collection_config) = config.collections.items.get(collection_name) {
+            for default in &collection_config.defaults {
+                apply_default_if_matches(front_matter, file_path, default, collection_name)?;
             }
         }
     }
     
-    result
+    // Apply global defaults from config
+    for default in &config.defaults {
+        apply_default_if_matches(front_matter, file_path, default, collection_name)?;
+    }
+    
+    Ok(())
 }
 
-/// Apply defaults to a single front matter
-pub fn apply_defaults_to_front_matter(front_matter: &mut FrontMatter, values: &serde_yaml::Value) {
-    if let serde_yaml::Value::Mapping(map) = values {
-        for (key, value) in map {
-            if let Some(key_str) = key.as_str() {
-                match key_str {
-                    "title" => {
-                        if front_matter.title.is_none() {
-                            if let Some(title) = value.as_str() {
-                                front_matter.title = Some(title.to_string());
-                            }
-                        }
-                    },
-                    "layout" => {
-                        if front_matter.layout.is_none() {
-                            if let Some(layout) = value.as_str() {
-                                front_matter.layout = Some(layout.to_string());
-                            }
-                        }
-                    },
-                    "permalink" => {
-                        if front_matter.permalink.is_none() {
-                            if let Some(permalink) = value.as_str() {
-                                front_matter.permalink = Some(permalink.to_string());
-                            }
-                        }
-                    },
-                    "published" => {
-                        if front_matter.published.is_none() {
-                            if let Some(published) = value.as_bool() {
-                                front_matter.published = Some(published);
-                            }
-                        }
-                    },
-                    _ => {
-                        // Add to custom if not already present
-                        let key_string = key_str.to_string();
-                        if !front_matter.custom.contains_key(&key_string) {
-                            front_matter.custom.insert(key_string, value.clone());
-                        }
-                    }
+/// Apply front matter defaults to multiple paths
+pub fn apply_defaults_to_paths(
+    files: &mut [(PathBuf, FrontMatter)], 
+    config: &Config
+) -> Result<(), Box<dyn std::error::Error>> {
+    for (path, front_matter) in files.iter_mut() {
+        apply_defaults_to_front_matter(front_matter, path, config)?;
+    }
+    
+    Ok(())
+}
+
+/// Apply a specific default if the file matches the scope
+fn apply_default_if_matches(
+    front_matter: &mut FrontMatter, 
+    file_path: &Path, 
+    default: &FrontMatterDefault,
+    collection_name: &str
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Check if the scope matches
+    if !scope_matches(&default.scope, file_path, collection_name) {
+        return Ok(());
+    }
+    
+    // Convert the default values to a FrontMatter instance and merge
+    let yaml_str = serde_yaml::to_string(&default.values)?;
+    let default_front_matter = FrontMatter::default();
+    
+    // Apply defaults
+    if front_matter.title.is_none() && default_front_matter.title.is_some() {
+        front_matter.title = default_front_matter.title.clone();
+    }
+    
+    if front_matter.layout.is_none() && default_front_matter.layout.is_some() {
+        front_matter.layout = default_front_matter.layout.clone();
+    }
+    
+    Ok(())
+}
+
+/// Check if a file matches a scope's pattern
+fn scope_matches(
+    scope: &crate::config::FrontMatterScope, 
+    file_path: &Path,
+    collection_name: &str
+) -> bool {
+    // Check type if specified
+    if let Some(type_pattern) = &scope.type_ {
+        match type_pattern.as_str() {
+            "posts" => {
+                if collection_name != "posts" {
+                    return false;
+                }
+            },
+            "pages" => {
+                if !collection_name.is_empty() && collection_name != "pages" {
+                    return false;
+                }
+            },
+            "drafts" => {
+                if !file_path.to_string_lossy().contains("_drafts") {
+                    return false;
+                }
+            },
+            _ => {
+                // For other types, check if it matches the collection name
+                if collection_name != type_pattern {
+                    return false;
                 }
             }
         }
     }
-}
-
-/// Check if a path matches a scope
-fn path_matches_scope(path: &Path, scope: &crate::config::FrontMatterScope, config: &Config) -> bool {
-    let path_str = path.to_string_lossy();
     
-    // Check path pattern if it exists
-    if let Some(pattern) = &scope.path {
-        let scope_path = pattern.trim_start_matches('/');
-        if !path_str.contains(scope_path) {
-            return false;
-        }
-    }
-    
-    // Check type pattern if it exists
-    if let Some(type_pattern) = &scope.type_ {
-        let file_type = match type_pattern.as_str() {
-            "posts" => {
-                let posts_dir = config.source.join(&config.posts_dir);
-                let posts_path = posts_dir.to_string_lossy();
-                path_str.starts_with(&*posts_path)
-            },
-            "drafts" => {
-                let drafts_dir = config.source.join(&config.drafts_dir);
-                let drafts_path = drafts_dir.to_string_lossy();
-                path_str.starts_with(&*drafts_path)
-            },
-            "pages" => {
-                // Pages are anything that's not a post, draft, or collection
-                let posts_dir = config.source.join(&config.posts_dir);
-                let posts_path = posts_dir.to_string_lossy();
-                let drafts_dir = config.source.join(&config.drafts_dir);
-                let drafts_path = drafts_dir.to_string_lossy();
-                
-                // Check if this is a page (not post or draft)
-                !path_str.starts_with(&*posts_path) && 
-                !path_str.starts_with(&*drafts_path) &&
-                !is_collection_path(path, config)
-            },
-            // Check if it's a collection type
-            collection_name => {
-                // Check if this path is in the collection
-                let collection_dir = if let Some(coll) = config.collections.items.get(collection_name) {
-                    // Default collection directory pattern (_name)
-                    config.source.join(format!("_{}", collection_name))
-                } else {
-                    config.source.join(format!("_{}", collection_name))
-                };
-                let collection_path = collection_dir.to_string_lossy();
-                path_str.starts_with(&*collection_path)
-            }
-        };
+    // Check path if specified
+    if let Some(path_pattern) = &scope.path {
+        let pattern = Pattern::new(path_pattern);
         
-        if !file_type {
+        if let Ok(pattern) = pattern {
+            let file_path_str = file_path.to_string_lossy();
+            
+            // Normalize path for matching
+            let normalized_path = file_path_str.replace('\\', "/");
+            
+            if !pattern.matches(&normalized_path) {
+                return false;
+            }
+        } else {
+            debug!("Invalid glob pattern in front matter defaults: {}", path_pattern);
             return false;
         }
     }
     
-    // If we got here, all scope conditions matched
+    // If we get here, all conditions matched
     true
 }
 
-/// Check if a path is in a collection
-fn is_collection_path(path: &Path, config: &Config) -> bool {
-    let path_str = path.to_string_lossy();
+/// Apply default front matter
+pub fn apply_defaults(
+    front_matter: &mut FrontMatter,
+    path: &Path,
+    config: &Config
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Get collection from path context instead of front_matter
+    let collection_name = "";
     
-    for (name, _) in &config.collections.items {
-        // Default collection directory pattern (_name)
-        let collection_dir = config.source.join(format!("_{}", name));
-        
-        let collection_path = collection_dir.to_string_lossy();
-        
-        if path_str.starts_with(&*collection_path) {
-            return true;
+    // Start with defaults from collection configuration
+    if !collection_name.is_empty() {
+        if let Some(collection_config) = config.collections.items.get(collection_name) {
+            if !collection_config.defaults.is_empty() {
+                apply_defaults_from_list(front_matter, path, &collection_config.defaults)?;
+            }
         }
     }
     
-    false
+    // Apply global defaults
+    apply_defaults_from_list(front_matter, path, &config.defaults)?;
+    
+    Ok(())
+}
+
+/// Apply defaults from a defaults list
+fn apply_defaults_from_list(
+    front_matter: &mut FrontMatter,
+    path: &Path,
+    defaults: &[FrontMatterDefault],
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Find matching defaults
+    let default = find_matching_default(path, defaults);
+    
+    if let Some(default) = default {
+        // Convert the default values to a FrontMatter instance and merge
+        let yaml_str = serde_yaml::to_string(&default.values)?;
+        
+        // Create a default front matter
+        let default_front_matter = FrontMatter::default();
+        
+        // Apply defaults for title
+        if front_matter.title.is_none() && default_front_matter.title.is_some() {
+            front_matter.title = default_front_matter.title.clone();
+        }
+        
+        // Apply defaults for layout
+        if front_matter.layout.is_none() && default_front_matter.layout.is_some() {
+            front_matter.layout = default_front_matter.layout.clone();
+        }
+    }
+    
+    Ok(())
+}
+
+/// Find the matching default configuration for a path
+fn find_matching_default<'a>(path: &Path, defaults: &'a [FrontMatterDefault]) -> Option<&'a FrontMatterDefault> {
+    for default in defaults {
+        if scope_matches(&default.scope, path, "") {
+            return Some(default);
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{FrontMatterDefault, FrontMatterScope};
+    
+    #[test]
+    fn test_scope_matches_path() {
+        let scope = FrontMatterScope {
+            path: Some("_posts/*.md".to_string()),
+            type_: None,
+        };
+        
+        let matching_path = PathBuf::from("_posts/test.md");
+        let non_matching_path = PathBuf::from("pages/test.md");
+        
+        assert!(scope_matches(&scope, &matching_path, ""));
+        assert!(!scope_matches(&scope, &non_matching_path, ""));
+    }
+    
+    #[test]
+    fn test_scope_matches_type() {
+        let scope = FrontMatterScope {
+            path: None,
+            type_: Some("posts".to_string()),
+        };
+        
+        let path = PathBuf::from("_posts/test.md");
+        
+        assert!(scope_matches(&scope, &path, "posts"));
+        assert!(!scope_matches(&scope, &path, "pages"));
+    }
+    
+    #[test]
+    fn test_apply_default_if_matches() {
+        let mut front_matter = FrontMatter::default();
+        let path = PathBuf::from("_posts/test.md");
+        
+        let default = FrontMatterDefault {
+            scope: FrontMatterScope {
+                path: Some("_posts/*.md".to_string()),
+                type_: None,
+            },
+            values: serde_yaml::from_str("layout: post\nauthor: Test Author").unwrap(),
+        };
+        
+        apply_default_if_matches(&mut front_matter, &path, &default, "").unwrap();
+        
+        assert_eq!(front_matter.layout, Some("post".to_string()));
+        assert_eq!(front_matter.author, Some("Test Author".to_string()));
+    }
 } 

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
-use std::error::Error;
-use log::{info, warn};
+use log::warn;
 use glob::glob;
+use glob_match::glob_match;
 use crate::config::Config;
 use crate::directory::types::BoxResult;
 
@@ -41,6 +41,15 @@ pub fn patterns_to_regex(patterns: &[String]) -> String {
     regex_parts.join("|")
 }
 
+/// Convert an Option<Vec<String>> list of patterns to a regex
+pub fn option_patterns_to_regex(patterns: &Option<Vec<String>>) -> String {
+    if let Some(patterns) = patterns {
+        patterns_to_regex(patterns)
+    } else {
+        String::new()
+    }
+}
+
 /// Find all files matching patterns in the source directory
 pub fn find_files(config: &Config, patterns: &[&str]) -> BoxResult<Vec<PathBuf>> {
     let mut files = Vec::new();
@@ -54,7 +63,7 @@ pub fn find_files(config: &Config, patterns: &[&str]) -> BoxResult<Vec<PathBuf>>
                     // Skip directories and excluded files
                     if path.is_file() && !path_matches_pattern(
                         &path.to_string_lossy().to_string(), 
-                        &patterns_to_regex(&config.exclude)
+                        &option_patterns_to_regex(&config.exclude)
                     ) {
                         files.push(path);
                     }
@@ -77,4 +86,26 @@ pub fn is_safe_delete_path(path: &Path, config: &Config) -> bool {
     
     // In safe mode, only allow deleting within the source or an explicit destination
     path.starts_with(&config.source) || path.starts_with(&config.destination)
+}
+
+pub fn is_excluded(path: &Path, config: &Config) -> bool {
+    // First check includes (they override excludes)
+    if let Some(include_patterns) = &config.include {
+        for pattern in include_patterns {
+            if glob_match(pattern, path.to_str().unwrap_or("")) {
+                return false;
+            }
+        }
+    }
+    
+    // Then check excludes
+    if let Some(exclude_patterns) = &config.exclude {
+        for pattern in exclude_patterns {
+            if glob_match(pattern, path.to_str().unwrap_or("")) {
+                return true;
+            }
+        }
+    }
+    
+    false
 } 

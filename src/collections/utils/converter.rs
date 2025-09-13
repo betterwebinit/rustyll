@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use liquid::model::Value;
-use liquid::Object;
 
 use crate::config::Config;
 use crate::collections::document::model::Collection;

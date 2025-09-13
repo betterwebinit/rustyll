@@ -8,6 +8,4 @@ pub mod core;
 pub mod middleware;
 
 // Re-export key components for public API
-pub use core::{serve, serve_with_watch};
-pub use config::ServerConfig;
-pub use livereload::LiveReloadHandler; 
+pub use core::{serve, serve_with_watch}; 

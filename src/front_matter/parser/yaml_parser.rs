@@ -1,6 +1,7 @@
 use std::error::Error;
 use log::{warn};
 use crate::front_matter::types::FrontMatter;
+use serde_yaml;
 
 type BoxResult<T> = Result<T, Box<dyn Error>>;
 
@@ -30,6 +31,29 @@ pub fn parse(content: &str) -> BoxResult<FrontMatter> {
     Ok(FrontMatter::default())
 }
 
+/// Parse YAML front matter from text
+pub fn parse_yaml(content: &str) -> Result<(serde_yaml::Value, String), Box<dyn Error>> {
+    // Check if the content starts with front matter delimiter
+    if !content.starts_with("---") {
+        return Ok((serde_yaml::Value::Null, content.to_string()));
+    }
+    
+    // Find the end of the front matter
+    if let Some(end_index) = content[3..].find("---") {
+        let yaml_content = &content[3..(end_index + 3)];
+        let remaining_content = &content[(end_index + 6)..];
+        
+        // Parse the YAML content
+        match serde_yaml::from_str(yaml_content) {
+            Ok(yaml) => Ok((yaml, remaining_content.to_string())),
+            Err(e) => Err(Box::new(e)),
+        }
+    } else {
+        // No end delimiter found
+        Ok((serde_yaml::Value::Null, content.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,37 +71,15 @@ mod tests {
     
     #[test]
     fn test_merge_front_matter() {
-        let mut fm1 = FrontMatter {
-            title: Some("Original Title".to_string()),
-            layout: None,
-            permalink: None,
-            date: None,
-            categories: None,
-            tags: None,
-            published: None,
-            excerpt_separator: None,
-            custom: {
-                let mut map = HashMap::new();
-                map.insert("original_field".to_string(), serde_yaml::Value::String("value".to_string()));
-                map
-            },
-        };
+        let mut fm1 = FrontMatter::default();
+        fm1.title = Some("Original Title".to_string());
+        fm1.custom.insert("original_field".to_string(), serde_yaml::Value::String("value".to_string()));
         
-        let fm2 = FrontMatter {
-            title: Some("New Title".to_string()),
-            layout: Some("default".to_string()),
-            permalink: Some("/custom/url/".to_string()),
-            date: None,
-            categories: None,
-            tags: None,
-            published: None,
-            excerpt_separator: None,
-            custom: {
-                let mut map = HashMap::new();
-                map.insert("new_field".to_string(), serde_yaml::Value::String("new_value".to_string()));
-                map
-            },
-        };
+        let mut fm2 = FrontMatter::default();
+        fm2.title = Some("New Title".to_string());
+        fm2.layout = Some("default".to_string());
+        fm2.permalink = Some("/custom/url/".to_string());
+        fm2.custom.insert("new_field".to_string(), serde_yaml::Value::String("new_value".to_string()));
         
         fm1.merge(&fm2);
         

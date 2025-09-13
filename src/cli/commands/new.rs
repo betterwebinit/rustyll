@@ -1,6 +1,6 @@
 use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::io;
+use std::path::Path;
 use crate::cli::types::Commands;
 use log::{info, error};
 

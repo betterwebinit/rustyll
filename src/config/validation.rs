@@ -1,4 +1,3 @@
-use std::path::Path;
 use log::{warn, info};
 
 use crate::config::Config;

@@ -1,11 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
-use std::error::Error;
 use chrono::{DateTime, Utc, NaiveDate, TimeZone};
 use regex::Regex;
-use log::{debug, warn, error};
-
-use crate::front_matter::FrontMatter;
+use log::debug;
 use crate::collections::document::model::Document;
 use crate::collections::types::BoxResult;
 
@@ -36,20 +33,14 @@ pub fn parse_document(
         path.file_name().unwrap().to_string_lossy().to_string()
     };
     
-    // Create document with extracted data
-    let document = Document {
+    let document = Document::new(
         id,
-        path: path.to_path_buf(),
-        relative_path: path.strip_prefix(collection_dir)?.to_path_buf(),
-        output_path: None,
-        url: None,
-        collection: collection_label.to_string(),
-        date: front_matter.get_date(),
-        content,
-        rendered_content: None,
+        path.to_path_buf(),
+        path.strip_prefix(collection_dir)?.to_path_buf(),
+        collection_label.to_string(),
+        content.to_string(),
         front_matter,
-        excerpt: None,
-    };
+    );
     
     Ok(Some(document))
 }
@@ -90,20 +81,14 @@ pub fn parse_post(
         path.file_name().unwrap().to_string_lossy().to_string()
     };
     
-    // Create document with extracted data
-    let document = Document {
+    let document = Document::new(
         id,
-        path: path.to_path_buf(),
-        relative_path: path.strip_prefix(posts_dir)?.to_path_buf(),
-        output_path: None,
-        url: None,
-        collection: "posts".to_string(),
-        date: front_matter.get_date(),
-        content,
-        rendered_content: None,
+        path.to_path_buf(),
+        path.strip_prefix(posts_dir)?.to_path_buf(),
+        "posts".to_string(),
+        content.to_string(),
         front_matter,
-        excerpt: None,
-    };
+    );
     
     Ok(Some(document))
 }
@@ -141,20 +126,14 @@ pub fn parse_draft(
         path.file_name().unwrap().to_string_lossy().to_string()
     };
     
-    // Create document with extracted data
-    let document = Document {
+    let document = Document::new(
         id,
-        path: path.to_path_buf(),
-        relative_path: path.strip_prefix(drafts_dir)?.to_path_buf(),
-        output_path: None,
-        url: None,
-        collection: "posts".to_string(),
-        date: front_matter.get_date(),
-        content,
-        rendered_content: None,
+        path.to_path_buf(),
+        path.strip_prefix(drafts_dir)?.to_path_buf(),
+        "posts".to_string(),
+        content.to_string(),
         front_matter,
-        excerpt: None,
-    };
+    );
     
     Ok(Some(document))
 }

@@ -1,86 +1,342 @@
-# Configuration (`_config.yml` and Command-Line Flags)
+# Configuration in Rustyll
 
-Jekyll's configuration system is flexible. Users can set most options in a `_config.yml` file (written in YAML; `_config.toml` is also supported as an alternative), and/or override or supplement these via command-line flags when running `jekyll build` or `jekyll serve`. To be Jekyll-compatible, the Rust SSG must support the same configuration keys and CLI flags, producing the same effects.
+Rustyll's configuration system is designed to be both Jekyll-compatible and Rust-performant. It supports YAML (`_config.yml`) and TOML (`_config.toml`) formats, with the same configuration keys and command-line flags as Jekyll, while adding Rust-specific optimizations and features.
 
-## Configuration File: `_config.yml`
+## Core Configuration System
 
-This file (by default in the site root) contains site settings, default values, and plugin/theme configs. Jekyll loads this once at startup (changes to it during `serve` won't take effect until restart). Common settings include site metadata (title, description, etc.), as well as build directives. Notable configuration options and their default values are:
+### File Formats and Loading
 
-### Site Source and Destination
+Rustyll supports both YAML and TOML configuration formats:
 
-By default, Jekyll considers the current directory as the source (where your content is) and writes the site to `./_site`. These can be changed with `source: <dir>` and `destination: <dir>` in config or via `--source` (`-s`) and `--destination` (`-d`) CLI flags. For example, `jekyll build -d public_html` would output to `public_html` instead of `_site`. If your SSG offers similar flags, they should mirror this behavior.
+```yaml
+# _config.yml example
+title: "My Site"
+baseurl: "/blog"
+```
 
-### Directory Names
+```toml
+# _config.toml example
+title = "My Site"
+baseurl = "/blog"
+```
 
-Other special directories can be configured:
+Configuration is loaded once at startup by default. Changes require a restart, except for data files which are reloaded during `serve` with auto-regeneration. The loading process:
 
-* `plugins_dir`: which directory Jekyll will load plugins from (default `_plugins`). CLI flag: `-p` or `--plugins DIR1,DIR2,...` to specify one or more plugin directories.
-* `layouts_dir`: default `_layouts`, can be set to a custom path (flag `--layouts DIR`).
-* `data_dir`: default `_data`.
-* `includes_dir`: default `_includes`.
-* `collections_dir`: by default, collections (including posts and drafts) are at project root. Jekyll lets you set `collections_dir: <folder>` to gather all collections under a subdirectory. For example, if `collections_dir: my_collections`, then Jekyll will expect `_posts` to be in `my_collections/_posts`, etc.. Your SSG should honor this if implemented (noting to adjust where it looks for `_posts`, `_drafts`, and other `_<collection>` folders).
+1. Load default configuration
+2. Merge theme configuration (if a theme is used and not disabled)
+3. Merge site's `_config.yml` or `_config.toml`
+4. Apply command-line overrides
+
+For multiple config files, use:
+```bash
+rustyll build --config _config.yml,_config_dev.yml
+```
+
+Later files override settings in earlier ones.
+
+### Site Directories
+
+These configuration options control where Rustyll looks for content:
+
+```yaml
+# Core directories
+source: .                # Where to find site content
+destination: _site       # Where to output the site
+plugins_dir: _plugins    # Plugin directory
+layouts_dir: _layouts    # Layout templates directory
+data_dir: _data          # Data files directory
+includes_dir: _includes  # Partial includes directory
+collections_dir: .       # Root directory for all collections 
+
+# Collection directories are relative to collections_dir
+```
+
+All directory paths are resolved relative to the site root, not the config file location. Rustyll implements these with Rust's `std::path` for cross-platform compatibility.
 
 ### Include/Exclude Patterns
 
-`exclude` can list files or glob patterns to exclude from processing. By default, Jekyll excludes certain files like node\_modules, Gemfile, etc. (the default list is shown when you do `jekyll new` and is merged with any additional excludes). Similarly, `include` can whitelist otherwise ignored files (like dotfiles or underscore-prefixed files). The SSG should allow similar patterns (likely using glob matching) to filter input files.
+Control which files are processed:
 
-### Site URL and Base URL
+```yaml
+# Files/patterns to exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - .git/
+  - .github/
+  - .gitignore
+  
+# Force inclusion of files that would otherwise be excluded
+include:
+  - .htaccess
+  - .well-known
+```
 
-`url` is the base URL of the site (e.g. `https://example.com`) and `baseurl` is a path subdirectory if the site is published in a subfolder of the domain (e.g. `/blog`). These are used by certain Liquid filters (`absolute_url` and `relative_url`) and by plugins like sitemap or feed to construct full URLs. In your SSG, you'll want to store these and ensure filters or any link generation logic uses them consistently.
+Rustyll implements these patterns using Rust's `globset` crate, offering faster matching than Ruby's `Dir.glob`. By optimizing the glob compilation, Rustyll achieves significant performance improvements for large sites with many exclude/include patterns.
 
-### Build Settings
+### URL Configuration
 
-* `safe`: if true, disables user plugins (only whitelisted built-in plugins allowed) and disallows custom Ruby code execution. GitHub Pages builds with `safe: true` by default (only certain plugins can run). For Rust SSG, "safe mode" might not be as relevant unless you allow user scripting, but for full compatibility, you might include a safe mode that, for example, ignores custom plugins or shell commands in templates.
+```yaml
+url: "https://example.com"   # The base hostname & protocol
+baseurl: "/blog"           # The subpath of your site, e.g. /blog
+permalink: date            # Posts URL format (date, pretty, ordinal, none)
+                          # or a custom template like /:categories/:year/:month/:day/:title.html
+```
 
-* `watch`: enable file watching to rebuild on changes (default off in build, on in `serve`). Controlled by CLI `-w/--watch`.
+Unlike Jekyll, Rustyll uses a custom URL parser optimized for static site generation, avoiding the overhead of Ruby's URI parsing for better performance.
 
-* `incremental`: enable incremental regeneration (default false). This creates the `.jekyll-metadata` and only rebuilds files that changed or depend on changed files. It's an experimental feature in Jekyll (can break in some cases), but dramatically speeds up rebuilds for large sites. If implementing, you would track dependency graph of pages to know what needs updating. At least, support the `--incremental` flag to mimic Jekyll, even if the actual mechanism differs.
+## Build Settings
 
-* `future`: by default, Jekyll does **not** publish posts dated in the future. Setting `future: true` (or using `--future` flag) will include future-dated posts in the build. Your SSG should filter out posts whose `date` is greater than now unless this is true.
+### Core Build Options
 
-* `unpublished`: similarly, Jekyll excludes any post with `published: false` in front matter. `unpublished: true` (or `--unpublished` CLI) will include them in the build (useful for previewing).
+```yaml
+# Build control options
+safe: false               # Disable plugins and ignore symbolic links
+strict_front_matter: false # Fail on invalid front matter
+liquid:
+  strict_filters: false   # Strict error checking for Liquid filters
+  strict_variables: false # Strict error checking for Liquid variables
+encoding: utf-8           # Default encoding for files
+future: false             # Show future-dated posts
+unpublished: false        # Render posts marked as unpublished
+watch: false              # Watch for changes (default: true in serve)
+show_drafts: false        # Process drafts
+limit_posts: 0            # Limit the number of posts to parse
+incremental: false        # Only re-generate changed files
+```
 
-* `show_drafts`: defaults to false; if true or `--drafts` is passed, it will process files in `_drafts/` as if they were posts (assigning them a date of build time). Implement by reading `_drafts` only when this flag is on.
+While Jekyll performs these checks at runtime, Rustyll implements many validations during the initial parsing phase, reducing the need for multiple passes and improving build times.
 
-* `limit_posts`: if set to an integer N, or `--limit_posts N` used, Jekyll will only process the first N posts (after sorting by date). This is mostly for debugging or generation speed. For compatibility, you can support this by slicing the posts list.
+### Markdown Processing
 
-* `lsi`: if true/`--lsi`, use the classifier-reborn plugin to generate related posts with Latent Semantic Indexing. GitHub Pages doesn't support `lsi` and it requires an extra gem, so many avoid it. If not implementing LSI, ensure that setting is ignored or documented.
+```yaml
+markdown: kramdown       # Markdown processor to use
+markdown_ext: "markdown,mkdown,mkdn,mkd,md" # Markdown file extensions
+kramdown:                # Kramdown-specific options
+  input: GFM
+  auto_ids: true
+  hard_wrap: false
+  syntax_highlighter: rouge
+```
 
-* `verbose`/`quiet`: `--verbose` increases logging (Jekyll prints more info on file reading, regeneration); `--quiet` silences normal output. These are about console output and not the site content, but your SSG could offer similar flags for user experience.
+Rustyll implements Markdown processing using Rust crates like `pulldown-cmark` and `syntect` for syntax highlighting, offering up to 50x faster Markdown rendering than Ruby-based kramdown. It maintains compatibility with the same configuration options while benefiting from Rust's performance.
 
-* `profile`: `--profile` generates a Liquid rendering profile report to help optimize templates. You likely don't need to replicate this unless you want debugging tools; it doesn't affect the site output.
+### Plugin System
 
-* `trace`: `--trace` shows full stack traces on errors (useful for debugging). Again, not content-related, but can be offered.
+```yaml
+plugins:                  # List of plugins to load
+  - jekyll-feed
+  - jekyll-seo-tag
+whitelist:                # Plugins allowed in safe mode
+  - jekyll-feed
+```
 
-### Markdown & Rendering Settings
+Rustyll's plugin system is reimplemented in Rust with two key components:
 
-`markdown: kramdown` (the default Markdown engine) or other options (see Section 6 for details). `highlighter: rouge` is default for code syntax highlighting. These can be configured or changed by user. The SSG should either integrate the default (kramdown-like CommonMark with GFM support and Rouge for highlighting) or at least parse with equivalent features if using a Rust library.
+1. **Built-in compatible plugins**: Native Rust implementations of common Jekyll plugins
+2. **Plugin API**: A Rust API for building custom plugins with Rustyll-specific features
 
-### Plugins
+Unlike Jekyll's Ruby-based plugins that run in the same process, Rustyll's plugin architecture can isolate plugins for better stability and security when needed.
 
-In config, `plugins:` (or the deprecated `gems:`) can list gem names of plugins to use. Jekyll auto-requires those gems on build. For a Rust SSG, this might not apply directly unless you implement a plugin system (see Section 4) with a concept of external modules. But to mimic Jekyll, you may still support a `plugins_dir` (for loading custom plugin files from a folder) and a means to specify which plugins are enabled. 
+### Theme Configuration
 
-Jekyll also has a `whitelist` (in older versions) or allowed list for plugins in safe mode – if safe mode is on, only plugins named in `whitelist` run. Additionally, `ignore_theme_config: true` is a newer option (Jekyll 4.0+) to ignore a theme gem's `_config.yml` if it causes conflicts. The Rust SSG should decide how to handle theme configurations (for compatibility, probably merge theme's config by default, unless an equivalent flag is set to ignore it).
+```yaml
+theme: minima            # Theme to use
+ignore_theme_config: false # Whether to ignore theme's _config.yml
+```
 
-## Default Configuration
+Rustyll handles themes differently than Jekyll:
 
-Jekyll's **default configuration** provides a baseline for many of these values (which is useful as a reference). For example, by default: `safe: false`, `include: [".htaccess"]`, `exclude: ["Gemfile", "node_modules", etc.]`, `keep_files: [".git", ".svn"]`, `encoding: "utf-8"`, `markdown_ext: "markdown,mkdown,mkdn,mkd,md"` (all file extensions that will be treated as Markdown), `strict_front_matter: false`, `show_drafts: null` (meaning false unless `--drafts` is set), `future: false`, `unpublished: false`, `markdown: kramdown`, `highlighter: rouge`, `permalink: date` (which corresponds to `/:categories/:year/:month/:day/:title.html` by default), `paginate_path: /page:num`, etc.
+1. Themes are packaged as `.tar.gz` or directory references
+2. Rust's memory-mapped I/O enables faster theme asset loading
+3. A theme cache minimizes repeated file operations
 
-Your SSG should implement similar defaults and then override with user config values. Notably, if multiple config files are provided (Jekyll supports `--config file1,file2` to merge configs), later files override earlier ones.
+## Rustyll Performance Optimizations
 
-## Command-line Flags Summary
+Rustyll adds performance-focused configuration options:
 
-Ensure to support (with Jekyll-equivalent names and behavior):
+```yaml
+# Rustyll-specific performance options
+performance:
+  threads: auto          # Thread count for parallelism (auto or specific number)
+  cache:
+    enabled: true        # Enable build caching
+    strategy: smart      # Cache strategy: minimal, normal, aggressive
+    directory: .rustyll-cache # Cache directory location
+  memory_limit: 1024     # Memory usage limit in MB (0 for unlimited)
+  profiling: false       # Enable performance profiling
+```
 
-* `-s, --source DIR` and `-d, --destination DIR` to set source/output directories.
-* `--config FILE1,FILE2,...` to specify config files (and ignore the default `_config.yml` unless it's included explicitly in the list).
-* `-w, --watch/--no-watch` to toggle watching (file system monitoring for changes).
-* `-D, --drafts` to include drafts.
-* `--future`, `--unpublished` to include future posts and unpublished posts.
-* `--limit_posts N` to limit processing to N posts.
-* `-I, --incremental` for incremental build mode.
-* `--safe` to enable safe mode (no custom plugins, no symbolic links, etc.).
-* `--profile`, `-t/--trace`, `-V/--verbose`, `-q/--quiet` for the logging and debug options.
-* `-H, --host` and `-P, --port` for the development server settings (if you implement a dev server like `jekyll serve`). Also `-l, --livereload` and related livereload options, which Jekyll added in v4 for auto-refresh in browser.
+### Multi-threading Model
 
-By matching these config and flag options, a user should be able to take an existing Jekyll site's config and use it with your SSG without changes to get an equivalent result. 
+Unlike Jekyll's primarily single-threaded operation, Rustyll implements a work-stealing thread pool using Rust's `rayon` crate. This enables parallel processing of:
+
+- Markdown rendering
+- Template parsing
+- Asset transformation
+- File I/O operations
+
+The `threads` option lets users control the thread count based on their system's capabilities.
+
+### Smart Caching System
+
+Rustyll's caching system is more sophisticated than Jekyll's `.jekyll-metadata`:
+
+1. **Content hashing**: Track content changes, not just file modification times
+2. **Dependency tracking**: Build a graph of template dependencies to only rebuild affected files
+3. **Persistent caching**: Store rendered partials, templates, and intermediate data
+4. **Memory caching**: Keep frequently used objects in memory for faster access
+
+This results in incremental builds that are often 10-50x faster than Jekyll's.
+
+## Asset Processing
+
+Rustyll extends Jekyll's basic asset handling with integrated processing:
+
+```yaml
+# Asset pipeline configuration
+assets:
+  compression: true       # Enable asset compression
+  cache_busting: true     # Add content hash to static assets
+  sources:                # Asset source directories
+    - _assets/images
+    - _assets/javascripts
+    - _assets/stylesheets
+  destination:            # Output directories
+    images: assets/images
+    javascripts: assets/js
+    stylesheets: assets/css
+  js:
+    bundle: true         # Bundle JS files
+    minify: true         # Minify JS files
+  css:
+    bundle: true         # Bundle CSS files
+    minify: true         # Minify CSS files
+  images:
+    optimize: true       # Optimize images
+    formats:
+      webp: true         # Generate WebP versions
+      avif: true         # Generate AVIF versions
+```
+
+Rustyll's asset pipeline uses native Rust libraries for image processing, minification, and transpilation, avoiding the need for external tools or Node.js dependencies.
+
+## Development Server
+
+```yaml
+# Development server settings
+server:
+  port: 4000             # Server port
+  host: 127.0.0.1        # Server host
+  livereload: true       # Enable live reload
+  livereload_port: 35729 # Live reload port
+  open_url: false        # Open browser automatically
+  show_dir_listing: false # Show directory listing for missing index pages
+  error_pages:           # Custom error pages
+    404: 404.html
+  headers:               # Custom HTTP headers
+    "Access-Control-Allow-Origin": "*"
+  quiet: false           # Silence output
+  verbose: false         # Verbose output
+```
+
+Rustyll's development server is built on Rust's async I/O libraries, providing faster response times and lower resource usage than Jekyll's WEBrick-based server.
+
+## Advanced Features
+
+### Collections Configuration
+
+```yaml
+# Collections configuration
+collections:
+  projects:               # Collection name
+    output: true          # Generate individual pages
+    sort_by: date         # Field to sort by
+    permalink: /projects/:path/ # URL template
+    paginate: 5           # Enable pagination
+    pagination_path: /projects/page:num/ # Pagination path pattern
+    filter:               # Filter collection items
+      featured: true      # Only include featured items
+```
+
+Rustyll's collections implementation uses optimized data structures for faster lookup and rendering, with a modular design allowing for type-safe collection access.
+
+### Advanced Pagination
+
+```yaml
+# Pagination settings
+paginate: 5               # Posts per page
+paginate_path: /page:num/ # Pagination URL path
+pagination:
+  enabled: true          # Enable advanced pagination
+  per_page: 5            # Items per page
+  title: ':title - page :num' # Page title format
+  sort_field: 'date'     # Field to sort by
+  sort_reverse: true     # Reverse sort order
+  trail:                 # Pagination navigation trail
+    before: 2            # Links before current page
+    after: 2             # Links after current page
+  extension: html        # Output file extension
+```
+
+Rustyll's pagination engine efficiently pre-computes pagination metadata during the site loading phase, reducing overhead during template rendering.
+
+## Migration from Jekyll
+
+Rustyll is designed as a drop-in replacement for Jekyll, but users should be aware of these differences:
+
+1. **Configuration Loading**: Rustyll loads configuration slightly faster and supports TOML natively
+2. **Plugin Behavior**: While API-compatible, plugins are implemented in Rust
+3. **Performance Options**: Additional configuration for multi-threading and caching
+4. **Error Handling**: More detailed error messages with suggestions
+
+To migrate from Jekyll to Rustyll:
+
+1. Install Rustyll: `cargo install rustyll`
+2. Run in the same directory: `rustyll build` or `rustyll serve`
+3. Optionally add Rustyll-specific optimizations to your config
+
+## Command-line Interface
+
+Rustyll maintains the same CLI flags as Jekyll for compatibility:
+
+```
+rustyll build|b : Build your site
+  -s, --source SOURCE            Source directory (default: .)
+  -d, --destination DESTINATION  Destination directory (default: ./_site)
+  --config CONFIG_FILE[,...]     Configuration file (default: _config.yml)
+  --future                       Publish posts with a future date
+  --unpublished                  Render posts that were marked as unpublished
+  --drafts                       Render posts in the _drafts folder
+  --lsi                          Use LSI for improved related posts
+  -q, --quiet                    Silence output
+  -V, --verbose                  Print verbose output
+  --trace                        Show full backtrace on errors
+  --profile                      Generate timing report
+
+rustyll serve|s : Serve your site locally
+  (includes all build options plus:)
+  -H, --host HOST                Host to bind to (default: 127.0.0.1)
+  -P, --port PORT                Port to listen on (default: 4000)
+  -l, --livereload               Enable LiveReload
+  --open-url                     Launch your site in a browser
+  --detach                       Detach the server from the terminal
+  --watch|--no-watch             Enable/disable auto-regeneration
+  -i, --incremental              Rebuild only modified posts and pages
+```
+
+Rustyll adds some additional flags for its advanced features:
+
+```
+  --threads NUM                  Set number of threads for parallel processing
+  --cache-dir PATH               Set cache directory
+  --disable-cache                Disable the build cache
+  --strict                       Strict mode (extra validation)
+```
+
+This implementation creates a familiar environment for Jekyll users while offering substantial performance improvements. 

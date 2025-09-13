@@ -1,4 +1,4 @@
-use liquid_core::{Runtime, ValueView, model::{Value, Object, KString, ScalarCow}, Error, ParseTag, Renderable, TagReflection, TagTokenIter};
+use liquid_core::{Runtime, ValueView, model::{Value, Object, ScalarCow}, Error, ParseTag, Renderable, TagReflection, TagTokenIter};
 use crate::config::Config;
 use std::path::PathBuf;
 use std::fs;
@@ -22,7 +22,14 @@ impl IncludeTag {
     
     fn read_include_file(&self, name: &str) -> Result<String, Error> {
         let includes_dir = self.config.source.join(&self.config.includes_dir);
-        let file_path = includes_dir.join(name);
+        
+        // First try with the exact name
+        let mut file_path = includes_dir.join(name);
+        
+        // If it doesn't exist, try with .html extension
+        if !file_path.exists() && !name.contains('.') {
+            file_path = includes_dir.join(format!("{}.html", name));
+        }
         
         info!("Looking for include file at: {}", file_path.display());
         
@@ -39,32 +46,43 @@ impl IncludeTag {
                 Ok(content)
             },
             Err(e) => {
-                error!("Failed to read include file: {} - Error: {}", file_path.display(), e);
+                error!("Failed to read include file '{}': {}", file_path.display(), e);
                 
-                // Also check for alternative path formulations (replace slashes with underscores, etc.)
-                // This is for compatibility with some Jekyll themes
-                let alt_name = name.replace('/', "_");
-                if alt_name != name {
-                    let alt_path = includes_dir.join(alt_name);
-                    info!("Trying alternative include path: {}", alt_path.display());
-                    
-                    if let Ok(content) = fs::read_to_string(&alt_path) {
-                        info!("Successfully read include file from alternative path: {}", alt_path.display());
-                        return Ok(content);
-                    }
-                }
-                
-                // List files in the includes directory for debugging
-                if let Ok(entries) = fs::read_dir(&includes_dir) {
-                    info!("Available files in _includes directory:");
-                    for entry in entries {
-                        if let Ok(entry) = entry {
-                            info!("  {}", entry.path().display());
+                // Check if there's a similar file with .html extension as fallback
+                if !name.ends_with(".html") {
+                    let html_path = includes_dir.join(format!("{}.html", name));
+                    if html_path.exists() {
+                        info!("Found alternative include file with .html extension: {}", html_path.display());
+                        match fs::read_to_string(&html_path) {
+                            Ok(content) => {
+                                info!("Successfully read alternative include file: {}", html_path.display());
+                                return Ok(content);
+                            },
+                            Err(e2) => {
+                                error!("Failed to read alternative include file '{}': {}", html_path.display(), e2);
+                            }
                         }
                     }
                 }
                 
-                Err(Error::with_msg(format!("Could not read include file: {}", file_path.display())))
+                // Generate a useful error message with debugging info
+                let error_msg = format!(
+                    "Could not read include file '{}': {}. Includes dir: {}, File path: {}", 
+                    name, e, includes_dir.display(), file_path.display()
+                );
+                
+                // List available include files for debugging
+                if let Ok(entries) = fs::read_dir(&includes_dir) {
+                    let mut available_files = Vec::new();
+                    for entry in entries {
+                        if let Ok(entry) = entry {
+                            available_files.push(entry.file_name().to_string_lossy().to_string());
+                        }
+                    }
+                    error!("Available include files: {:?}", available_files);
+                }
+                
+                Err(Error::with_msg(error_msg))
             }
         }
     }
@@ -109,7 +127,7 @@ impl TagReflection for IncludeTagReflection {
     }
 
     fn description(&self) -> &str {
-        "Include content from another file from the _includes directory"
+        "Include content from another file"
     }
 }
 
@@ -143,58 +161,52 @@ impl ParseTag for IncludeTag {
         // Check if this is a Liquid variable (starts with {{ and ends with }})
         let is_variable = first_arg_str.trim().starts_with("{{") && first_arg_str.trim().ends_with("}}");
         
-        // If it's a variable, keep it as is
-        if is_variable {
-            let filename = first_arg_str;
-            info!("Include filename (variable): '{}'", filename);
-            
-            // Collect all the parameter arguments
-            let mut params = HashMap::new();
-            // Parse parameters if any are left
-            if !all_remaining_tokens.is_empty() {
-                let params_str = all_remaining_tokens.join(" ");
-                params = self.parse_parameters(&params_str);
-            }
-            
-            return Ok(Box::new(IncludeTagRenderer {
-                config: self.config.clone(),
-                filename,
-                is_variable,
-                params,
-            }));
-        }
-        
-        // For regular paths, handle slashes directly in the filename
-        // Remove quotes if present
-        let mut filename = first_arg_str.trim_matches('"').trim_matches('\'').to_string();
-        let mut tokens_for_params = Vec::new();
-        
-        // Collect parameter arguments
-        for token_str in arguments {
-            // If it contains an equals sign, it's a parameter
-            if token_str.contains('=') {
-                tokens_for_params.push(token_str.clone());
-            } else {
-                // Otherwise it's likely part of a parameter value
-                tokens_for_params.push(token_str.clone());
-            }
-        }
-        
-        // Join all parameter tokens
-        let params_str = tokens_for_params.join(" ");
-        
-        info!("Include final filename: '{}'", filename);
-        if !params_str.is_empty() {
-            info!("Include parameters: '{}'", params_str);
-        }
+        // Clean up the filename - remove quotes if present
+        let filename = if !is_variable {
+            first_arg_str.trim_matches('"').trim_matches('\'').to_string()
+        } else {
+            first_arg_str
+        };
         
         // Parse parameters
-        let params = self.parse_parameters(&params_str);
+        let mut params = HashMap::new();
+        let mut current_key = String::new();
+        
+        // Check for the "with" keyword to process parameters
+        if let Some(next_token) = arguments.next() {
+            if next_token == "with" {
+                // Process key=value pairs after "with"
+                while let Some(param) = arguments.next() {
+                    let param_str = param.to_string();
+                    
+                    if param_str.contains('=') {
+                        // This is a key=value pair
+                        let parts: Vec<&str> = param_str.splitn(2, '=').collect();
+                        if parts.len() == 2 {
+                            let key = parts[0].trim().to_string();
+                            let value = parts[1].trim().to_string();
+                            params.insert(key, value);
+                        }
+                    } else if current_key.is_empty() {
+                        // This is a key
+                        current_key = param_str;
+                    } else {
+                        // This is a value for the previous key
+                        params.insert(current_key, param_str);
+                        current_key = String::new();
+                    }
+                }
+            }
+        }
+        
+        // Debug log the parsed values
+        info!("Include tag parsed: filename='{}', is_variable={}, params={:?}", 
+              filename, is_variable, params);
         
         Ok(Box::new(IncludeTagRenderer {
             config: self.config.clone(),
             filename,
-            is_variable: false,
+            is_variable,
             params,
         }))
     }
@@ -223,7 +235,7 @@ impl Renderable for IncludeTagRenderer {
             let value_str = value_cow.to_kstr().to_string();
             value_str
         } else {
-            self.filename.trim_matches('"').trim_matches('\'').to_string()
+            self.filename.clone()
         };
         
         // Read the include file
@@ -238,57 +250,17 @@ impl Renderable for IncludeTagRenderer {
         
         // Create a new scope for the include with parameters
         let mut include_scope = create_default_include_globals();
-
-        // Add the parameters to the include scope
-        for (key, value_str) in &self.params {
-            info!("Processing param: {}='{}'", key, value_str);
+        
+        // Add the filename to the include scope
+        include_scope.insert("path".into(), Value::scalar(filename.clone()));
+        
+        // Extract just the name without path or extension
+        let name = PathBuf::from(&filename)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| filename.clone());
             
-            // Parse and evaluate the value
-            if value_str.starts_with('"') && value_str.ends_with('"') || 
-                value_str.starts_with('\'') && value_str.ends_with('\'') {
-                // String literal - make sure to create an owned string
-                let clean_value = value_str.trim_matches('"').trim_matches('\'').to_string();
-                info!("Adding literal param: {}='{}'", key, clean_value);
-                include_scope.insert(key.clone().into(), Value::scalar(clean_value));
-            } else if value_str == "true" {
-                // Boolean true
-                info!("Adding boolean param: {}=true", key);
-                include_scope.insert(key.clone().into(), Value::scalar(true));
-            } else if value_str == "false" {
-                // Boolean false
-                info!("Adding boolean param: {}=false", key);
-                include_scope.insert(key.clone().into(), Value::scalar(false));
-            } else if let Ok(num) = value_str.parse::<f64>() {
-                // Number
-                info!("Adding numeric param: {}={}", key, num);
-                include_scope.insert(key.clone().into(), Value::scalar(num));
-            } else {
-                // Try to parse as a variable reference
-                let path: Vec<_> = value_str.split('.').map(ScalarCow::from).collect();
-                match runtime.get(&path) {
-                    Ok(val) => {
-                        info!("Adding variable param: {}={:?}", key, val.to_value());
-                        include_scope.insert(key.clone().into(), val.to_value());
-                    },
-                    Err(_) => {
-                        // Fall back to treating it as a string - create an owned string
-                        info!("Adding string param: {}='{}'", key, value_str);
-                        include_scope.insert(key.clone().into(), Value::scalar(value_str.clone()));
-                    }
-                }
-            }
-        }
-        
-        info!("Final include scope after parameters: {:?}", include_scope);
-        
-        // Set up a new liquid parser - with custom filters
-        let mut parser_builder = liquid::ParserBuilder::with_stdlib();
-        
-        // Register custom filters - specifically relative_url
-        parser_builder = filters::register_filters(parser_builder, &self.config);
-        
-        // Build the parser
-        let options = parser_builder.build()?;
+        include_scope.insert("name".into(), Value::scalar(name));
         
         // Create a new context with the include scope
         let mut globals = Object::new();
@@ -325,34 +297,79 @@ impl Renderable for IncludeTagRenderer {
             }
         }
         
+        // Add the parameters directly to the global scope
+        for (key, value_str) in &self.params {
+            // Try to evaluate the value
+            if value_str == "true" {
+                // Boolean true
+                info!("Adding boolean param: {}=true", key);
+                globals.insert(key.clone().into(), Value::scalar(true));
+            } else if value_str == "false" {
+                // Boolean false
+                info!("Adding boolean param: {}=false", key);
+                globals.insert(key.clone().into(), Value::scalar(false));
+            } else if let Ok(num) = value_str.parse::<f64>() {
+                // Number
+                info!("Adding numeric param: {}={}", key, num);
+                globals.insert(key.clone().into(), Value::scalar(num));
+            } else {
+                // Try to parse as a variable reference
+                let path: Vec<_> = value_str.split('.').map(ScalarCow::from).collect();
+                match runtime.get(&path) {
+                    Ok(val) => {
+                        info!("Adding variable param: {}={:?}", key, val.to_value());
+                        globals.insert(key.clone().into(), val.to_value());
+                    },
+                    Err(_) => {
+                        // Fall back to treating it as a string - create an owned string
+                        info!("Adding string param: {}='{}'", key, value_str);
+                        globals.insert(key.clone().into(), Value::scalar(value_str.clone()));
+                    }
+                }
+            }
+        }
+        
         // Add the include scope to globals
         globals.insert("include".into(), Value::Object(include_scope));
         
         info!("Full globals context: {:?}", globals);
+        
+        // Set up a new liquid parser - with custom filters
+        let mut parser_builder = liquid::ParserBuilder::with_stdlib();
+        
+        // Register custom filters - specifically relative_url
+        parser_builder = filters::register_filters(parser_builder, &self.config);
+        
+        // Build the parser
+        let options = parser_builder.build()?;
         
         // Preprocess the content to fix any include tags inside it
         let preprocessed_content = crate::liquid::preprocess::preprocess_liquid(&content);
         
         // Parse and render the include content - decode HTML entities first
         let decoded_content = html_escape::decode_html_entities(&preprocessed_content).to_string();
+        
+        // Parse the decoded content
         let template = match options.parse(&decoded_content) {
             Ok(t) => t,
             Err(e) => {
-                error!("Error parsing include template '{}': {}", filename, e);
-                return Err(Error::with_msg(format!("Error parsing include {}: {}", filename, e)));
+                error!("Failed to parse include file '{}': {}", filename, e);
+                return Err(Error::with_msg(format!("Error parsing include file '{}': {}", filename, e)));
             }
         };
         
-        // Render the template with the globals
-        match template.render(&globals) {
-            Ok(result) => {
-                Ok(result)
-            },
+        // Render with the globals context
+        let rendered = match template.render(&globals) {
+            Ok(r) => r,
             Err(e) => {
-                error!("Error rendering include file '{}': {}", filename, e);
-                Err(Error::with_msg(format!("Error rendering include {}: {}", filename, e)))
+                error!("Failed to render include file '{}': {}", filename, e);
+                return Err(Error::with_msg(format!("Error rendering include file '{}': {}", filename, e)));
             }
-        }
+        };
+        
+        info!("Successfully rendered include file: {}", filename);
+        
+        Ok(rendered)
     }
 
     fn render_to(&self, writer: &mut dyn std::io::Write, runtime: &dyn Runtime) -> Result<(), Error> {

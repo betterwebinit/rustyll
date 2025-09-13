@@ -1,6 +1,4 @@
-use std::path::{Path, PathBuf};
 use std::fs;
-use std::error::Error;
 use log::{debug, warn};
 use walkdir::WalkDir;
 use crate::directory::types::BoxResult;

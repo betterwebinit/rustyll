@@ -1,5 +1,5 @@
 use std::fmt;
-use liquid_core::{Runtime, ValueView, Value, Result as LiquidResult, Error as LiquidError};
+use liquid_core::{Runtime, ValueView, Value, Result as LiquidResult};
 use liquid_core::parser::{FilterArguments, ParseFilter, ParameterReflection};
 use liquid_core::{FilterReflection};
 use chrono::{TimeZone, Utc, NaiveDateTime};

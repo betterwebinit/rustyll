@@ -1,8 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::path::Path;
-use std::collections::HashSet;
-use log::{info, debug, error};
+use log::{info, debug};
 use glob::Pattern;
 
 /// LiveReload handler for managing browser refresh

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use chrono::{DateTime, Utc, Timelike, Datelike};
 
 use crate::front_matter::types::FrontMatter;

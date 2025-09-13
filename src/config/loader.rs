@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::fs;
-use log::{debug, warn};
+use log::debug;
 use std::collections::HashMap;
 
 use crate::config::types::Config;
@@ -224,12 +224,16 @@ fn merge_configs(target: &mut Config, source: &Config) {
         target.defaults = source.defaults.clone();
     }
     
-    if !source.exclude.is_empty() {
-        target.exclude = source.exclude.clone();
+    if let Some(exclude) = &source.exclude {
+        if !exclude.is_empty() {
+            target.exclude = source.exclude.clone();
+        }
     }
     
-    if !source.include.is_empty() {
-        target.include = source.include.clone();
+    if let Some(include) = &source.include {
+        if !include.is_empty() {
+            target.include = source.include.clone();
+        }
     }
     
     if !source.plugins.is_empty() {

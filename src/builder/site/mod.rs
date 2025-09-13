@@ -5,7 +5,7 @@ mod converter;
 
 pub use builder::build_site;
 pub use loader::{load_layouts, load_includes};
-pub use processor::{process_collections, process_pages, apply_layout};
+pub use processor::{process_collections, process_pages};
 pub use converter::{page_to_liquid, data_to_liquid};
 
 use std::path::Path;

@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use crate::migrate::{
     EngineMigrator, MigrationOptions, MigrationResult, MigrationChange, ChangeType,
-    create_dir_if_not_exists, copy_file, write_readme
+    create_dir_if_not_exists
 };
 use walkdir::WalkDir;
 

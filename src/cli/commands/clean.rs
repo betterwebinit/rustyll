@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use crate::config;
 use crate::directory;
-use crate::cli::types::Commands;
 
 /// Handle the clean command
 pub fn handle_clean_command() {

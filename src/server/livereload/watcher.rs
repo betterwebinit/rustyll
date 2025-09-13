@@ -17,7 +17,7 @@ pub fn watch_directory<P: AsRef<Path>>(
     let ignore_patterns = ignore_patterns.to_vec(); // Clone for move into closure
     
     // Configure the watcher with better performance settings
-    let config = NotifyConfig::default()
+    let _config = NotifyConfig::default()
         .with_poll_interval(debounce_duration)
         .with_compare_contents(false); // Only check timestamps, not file contents
     

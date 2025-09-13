@@ -17,8 +17,8 @@ pub async fn run() {
     logging::configure_backtrace(cli.trace);
     
     // Set default source and destination
-    let source = cli.source.as_ref().map_or_else(|| PathBuf::from("./"), |p| p.clone());
-    let destination = cli.destination.as_ref().map_or_else(|| PathBuf::from("./_site"), |p| p.clone());
+    let _source = cli.source.as_ref().map_or_else(|| PathBuf::from("./"), |p| p.clone());
+    let _destination = cli.destination.as_ref().map_or_else(|| PathBuf::from("./_site"), |p| p.clone());
 
     match &cli.command {
         Some(types::Commands::Build { .. }) => {
