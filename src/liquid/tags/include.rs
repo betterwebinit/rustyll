@@ -137,16 +137,49 @@ impl ParseTag for IncludeTag {
     }
     
     fn parse(&self, mut arguments: TagTokenIter, _options: &liquid_core::parser::Language) -> Result<Box<dyn Renderable>, Error> {
-        // First get the argument which might be a filename or a path with parameters
-        let first_arg = arguments.next().ok_or_else(|| Error::with_msg("Include tag requires a filename argument"))?;
-        let mut first_arg_str = first_arg.as_str().to_string();
-        
-        // Log all incoming tokens for debugging
-        info!("Include tag first argument: '{}'", first_arg_str);
-        let mut all_remaining_tokens = Vec::new();
+        // Collect all arguments as raw tokens first to handle paths with slashes correctly
+        let mut all_tokens = Vec::new();
         while let Some(token) = arguments.next() {
-            all_remaining_tokens.push(token.as_str().to_string());
+            all_tokens.push(token.as_str().to_string());
         }
+
+        if all_tokens.is_empty() {
+            return Err(Error::with_msg("Include tag requires a filename argument"));
+        }
+
+        // Log all incoming tokens for debugging
+        info!("Include tag all tokens: {:?}", all_tokens);
+
+        // Handle the filename - it might be spread across multiple tokens if it contains slashes
+        let mut filename_parts = Vec::new();
+        let mut token_index = 0;
+
+        // Reconstruct the filename by looking for patterns like: "components", "/", "blog", "/", "hero.html"
+        while token_index < all_tokens.len() {
+            let token = &all_tokens[token_index];
+
+            // Stop if we hit a keyword like "with"
+            if token == "with" {
+                break;
+            }
+
+            // Add this token to the filename
+            filename_parts.push(token.clone());
+            token_index += 1;
+
+            // If the next token is "/" and we're not at the end, continue building the path
+            if token_index < all_tokens.len() && all_tokens[token_index] == "/" {
+                filename_parts.push("/".to_string());
+                token_index += 1;
+            }
+        }
+
+        // Join the filename parts
+        let mut first_arg_str = filename_parts.join("");
+        info!("Include tag reconstructed filename: '{}'", first_arg_str);
+
+        // Get remaining tokens after the filename
+        let all_remaining_tokens: Vec<String> = all_tokens[token_index..].to_vec();
         info!("Include tag remaining tokens: {:?}", all_remaining_tokens);
         
         // Reset arguments iterator
