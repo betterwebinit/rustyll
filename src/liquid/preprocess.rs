@@ -63,7 +63,9 @@ pub fn preprocess_liquid(content: &str) -> String {
     // Apply each preprocessor function in sequence
     let content = normalize_hyphenated_variables(&content);
     let content = convert_include_equals_to_colons(&content);
-    
+    let content = protect_date_filter_formats(&content);
+    let content = protect_markdown_date_formats(&content);
+
     // Return the preprocessed content
     debug!("Preprocessed liquid content");
     content
@@ -119,6 +121,70 @@ fn normalize_hyphenated_variables(content: &str) -> String {
               
         bracket_format
     }).to_string();
-    
+
     result
+}
+
+/// Protect date filter format strings from being misinterpreted
+/// Wraps date filter format strings in quotes if they aren't already
+fn protect_date_filter_formats(content: &str) -> String {
+    lazy_static::lazy_static! {
+        // Match date filter with unquoted format string
+        // This regex matches: | date: format_string where format_string may contain special chars
+        static ref DATE_FILTER_RE: Regex = Regex::new(
+            r#"\|\s*date:\s*([^"'\s][^}|]*?)(?:\s*(?:\||}}|-}}))"#
+        ).unwrap();
+    }
+
+    let result = DATE_FILTER_RE.replace_all(content, |caps: &regex::Captures| {
+        let full_match = &caps[0];
+        let format = &caps[1].trim();
+
+        // If the format already starts with a quote, leave it as is
+        if format.starts_with('"') || format.starts_with('\'') {
+            full_match.to_string()
+        } else {
+            // Find the ending delimiter (|, }}, or -}})
+            let end_delim = if full_match.ends_with("}}") {
+                "}}"
+            } else if full_match.ends_with("-}}") {
+                "-}}"
+            } else {
+                "|"
+            };
+
+            // Wrap the format in quotes
+            let quoted = format!("| date: \"{}\" {}", format, end_delim);
+            debug!("Protected date format: '{}' -> '{}'", full_match, quoted);
+            quoted
+        }
+    }).to_string();
+
+    result
+}
+
+/// Special handling for date formats in markdown context
+/// This handles the case where date formats in markdown links confuse the parser
+fn protect_markdown_date_formats(content: &str) -> String {
+    lazy_static::lazy_static! {
+        // Match date filter in markdown context (inside [])
+        static ref MD_DATE_FILTER_RE: Regex = Regex::new(
+            r#"\[([^\]]*\{\{[^\}]*\|\s*date:\s*)("[^"]+"|'[^']+'|[^}]+)(\s*\}\}[^\]]*)\]"#
+        ).unwrap();
+    }
+
+    MD_DATE_FILTER_RE.replace_all(content, |caps: &regex::Captures| {
+        let prefix = &caps[1];
+        let format = &caps[2];
+        let suffix = &caps[3];
+
+        // If format is not quoted, quote it
+        let quoted_format = if format.starts_with('"') || format.starts_with('\'') {
+            format.to_string()
+        } else {
+            format!("\"{}\"", format)
+        };
+
+        format!("[{}{}{}]", prefix, quoted_format, suffix)
+    }).to_string()
 } 

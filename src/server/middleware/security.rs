@@ -3,14 +3,14 @@
 use axum::{
     body::Body,
     extract::State,
-    http::{Request, Response, header, HeaderMap, HeaderValue},
+    http::{Request, Response, HeaderValue},
     middleware::Next,
     response::IntoResponse,
 };
 use std::sync::Arc;
 use tower::Layer;
 use tower_http::set_header::SetResponseHeaderLayer;
-use log::{debug, trace};
+use log::trace;
 
 /// Security configuration for the server
 #[derive(Debug, Clone)]

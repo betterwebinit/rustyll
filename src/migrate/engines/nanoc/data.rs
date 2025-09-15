@@ -1,8 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use walkdir::WalkDir;
 use serde_yaml;
-use serde_json;
 use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file};
 
 impl super::NanocMigrator {

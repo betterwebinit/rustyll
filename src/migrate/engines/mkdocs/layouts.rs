@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use walkdir::WalkDir;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file, write_readme};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, write_readme};
 
 pub fn migrate_layouts(
     source_dir: &Path,

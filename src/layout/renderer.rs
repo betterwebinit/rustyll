@@ -65,7 +65,7 @@ impl LayoutRenderer {
     /// Find a layout file by name
     fn find_layout(&self, name: &str) -> BoxResult<PathBuf> {
         // First try with the exact name
-        let mut layout_path = self.layouts_dir.join(name);
+        let layout_path = self.layouts_dir.join(name);
         
         // If the layout doesn't have an extension, try common extensions
         if !layout_path.extension().is_some() {

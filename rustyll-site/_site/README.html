@@ -1,0 +1,33 @@
+<h1><a href="#migrated-jekyll-site" aria-hidden="true" class="anchor" id="header-migrated-jekyll-site"></a>Migrated Jekyll Site</h1>
+<p>This site has been migrated from Jekyll to Rustyll.</p>
+<h2><a href="#directory-structure" aria-hidden="true" class="anchor" id="header-directory-structure"></a>Directory Structure</h2>
+<ul>
+<li><code>_posts/</code>: Blog posts</li>
+<li><code>_layouts/</code>: Template layouts</li>
+<li><code>_includes/</code>: Reusable template fragments</li>
+<li><code>_data/</code>: Data files (YAML, JSON, CSV)</li>
+<li><code>_sass/</code>: Sass files for styling</li>
+<li><code>assets/</code>: CSS, JavaScript, images, and other static files</li>
+<li>Various pages and content files in the root directory</li>
+</ul>
+<h2><a href="#building-the-site" aria-hidden="true" class="anchor" id="header-building-the-site"></a>Building the Site</h2>
+<p>To build the site with Rustyll:</p>
+<pre lang="text"><code>rustyll build
+</code></pre>
+<h2><a href="#serving-the-site-locally" aria-hidden="true" class="anchor" id="header-serving-the-site-locally"></a>Serving the Site Locally</h2>
+<p>To serve the site locally:</p>
+<pre lang="text"><code>rustyll serve
+</code></pre>
+<h2><a href="#migration-notes" aria-hidden="true" class="anchor" id="header-migration-notes"></a>Migration Notes</h2>
+<p>Check the MIGRATION.md file for a detailed report of the migration process,
+including any warnings or issues that need to be addressed.</p>
+<p>Each directory also contains a README.md file with specific information about
+the migrated content in that directory.</p>
+<h2><a href="#changes-from-jekyll" aria-hidden="true" class="anchor" id="header-changes-from-jekyll"></a>Changes from Jekyll</h2>
+<p>The Rustyll system is designed to be compatible with Jekyll sites, but there
+may be some differences in advanced features:</p>
+<ol>
+<li>Plugin functionality may need to be reimplemented</li>
+<li>Some Liquid filters or tags might have different behavior</li>
+<li>Build process and configuration options might differ</li>
+</ol>

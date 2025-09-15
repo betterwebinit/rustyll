@@ -26,7 +26,7 @@ pub fn load_config<P: AsRef<Path>>(
     
     if config_paths.is_empty() {
         debug!("No configuration files found, using defaults");
-            } else {
+    } else {
         for path in config_paths {
             debug!("Loading configuration from {}", path.display());
             merge_config_file(&mut config, &path)?;
@@ -48,7 +48,6 @@ pub fn load_config<P: AsRef<Path>>(
 /// Find default configuration files
 fn find_default_config_files<P: AsRef<Path>>(source_dir: P) -> BoxResult<Vec<PathBuf>> {
     let mut config_paths = Vec::new();
-    
     for &config_file in &CONFIG_FILES {
         let config_path = source_dir.as_ref().join(config_file);
         if config_path.exists() {
@@ -117,7 +116,18 @@ fn parse_yaml_config(content: &str, path: &Path) -> BoxResult<Config> {
                 debug!("Processing top-level config key: {} = {:?}", key_str, value);
                 
                 // Skip collection-specific keys that will be handled by the normal deserialization
-                if !["defaults", "exclude", "include", "plugins", "collections"].contains(&key_str.as_str()) {
+                // Also skip Config struct fields that are handled by serde
+                if !["defaults", "exclude", "include", "plugins", "collections",
+                     "source", "destination", "layouts_dir", "data_dir", "includes_dir",
+                     "collections_dir", "plugins_dir", "cache_dir", "base_url", "baseurl",
+                     "title", "description", "repository", "safe_mode", "markdown_ext",
+                     "markdown_extensions", "markdown_config", "keep_files", "posts_dir",
+                     "drafts_dir", "url", "highlighter", "permalink", "site_data",
+                     "incremental", "build_report", "show_drafts", "future", "unpublished",
+                     "limit_posts", "lsi", "encoding", "timezone", "excerpt_separator",
+                     "paginate", "paginate_path", "kramdown", "liquid", "jekyll", "server",
+                     "strict_front_matter", "category_dir", "tag_dir", "liquid_config",
+                     "sass", "webrick", "quiet", "verbose", "trace", "strict_variables"].contains(&key_str.as_str()) {
                     debug!("Adding key '{}' to top_level_keys", key_str);
                     top_level_keys.insert(key_str.clone(), value.clone());
                 } else {
@@ -132,13 +142,24 @@ fn parse_yaml_config(content: &str, path: &Path) -> BoxResult<Config> {
         .map_err(|e| RustyllError::Config(format!(
             "Failed to parse YAML configuration ({}): {}", path.display(), e
         )))?;
+
+    // Special handling for author field - extract it directly from YAML
+    if let serde_yaml::Value::Mapping(map) = &yaml_value {
+        if let Some(author_value) = map.get(&serde_yaml::Value::String("author".to_string())) {
+            config.site_data.author = Some(author_value.clone());
+        }
+    }
     
     // Add all top-level keys to site_data.custom to make them available in templates
     debug!("Adding top-level keys to site_data.custom:");
     for (key, value) in top_level_keys {
         debug!("  - {}: {:?}", key, value);
         if !config.site_data.custom.contains_key(&key) {
-            config.site_data.custom.insert(key, value);
+            config.site_data.custom.insert(key.clone(), value.clone());
+            // Special handling for author field - also add to site_data.author
+            if key == "author" {
+                config.site_data.author = Some(value);
+            }
         } else {
             debug!("    (already exists in site_data.custom)");
         }

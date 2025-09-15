@@ -1,7 +1,5 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
-use std::fs::File;
-use std::io::Write;
 use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists};
 use walkdir::WalkDir;
 

@@ -22,9 +22,9 @@ pub struct SiteData {
     #[serde(default)]
     pub description: Option<String>,
     
-    /// Site author
+    /// Site author (can be string or object)
     #[serde(default)]
-    pub author: Option<String>,
+    pub author: Option<serde_yaml::Value>,
     
     /// Custom site data
     #[serde(flatten)]
@@ -596,32 +596,40 @@ impl Config {
         }
         
         obj.insert("baseurl".into(), Value::scalar(self.base_url.clone()));
-        
+
         // Add version and environment info
         obj.insert("version".into(), Value::scalar(env!("CARGO_PKG_VERSION")));
-        
+
         let env = std::env::var("RUSTYLL_ENV").unwrap_or_else(|_| "development".to_string());
         obj.insert("environment".into(), Value::scalar(env));
-        
+
         // Convert site data
         if let Some(title) = &self.site_data.title {
             obj.insert("title".into(), Value::scalar(title.clone()));
         }
-        
+
         if let Some(description) = &self.site_data.description {
             obj.insert("description".into(), Value::scalar(description.clone()));
         }
-        
+
         if let Some(author) = &self.site_data.author {
-            obj.insert("author".into(), Value::scalar(author.clone()));
+            // Convert serde_yaml::Value to liquid Value
+            obj.insert("author".into(), yaml_to_liquid(author.clone()));
         }
-        
+
         // Add all custom site data
         for (key, value) in &self.site_data.custom {
             let liquid_value = yaml_to_liquid(value.clone());
             obj.insert(key.clone().into(), liquid_value);
         }
-        
+
+        // Check if author is in the custom fields (fallback)
+        if obj.get("author").is_none() && self.site_data.custom.contains_key("author") {
+            if let Some(author_value) = self.site_data.custom.get("author") {
+                obj.insert("author".into(), yaml_to_liquid(author_value.clone()));
+            }
+        }
+
         obj
     }
     

@@ -20,7 +20,7 @@ impl super::GitbookMigrator {
         let mut site_author = String::from("");
         let mut site_lang = String::from("en");
         let mut plugins = Vec::new();
-        let mut other_config = serde_yaml::Mapping::new();
+        let other_config = serde_yaml::Mapping::new();
         
         let mut found_config = false;
         

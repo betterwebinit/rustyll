@@ -127,7 +127,7 @@ fn normalize_hyphenated_keys(data: &mut DataCollection) {
         match value {
             Value::Object(obj) => {
                 let key_clone = key.clone();
-                let mut nested_data: DataCollection = obj.iter()
+                let nested_data: DataCollection = obj.iter()
                     .map(|(k, v)| (k.to_string(), v.clone()))
                     .collect();
                 

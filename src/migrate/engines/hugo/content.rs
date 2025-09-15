@@ -5,8 +5,7 @@ use regex::Regex;
 use chrono::NaiveDate;
 use yaml_front_matter::{YamlFrontMatter, Document};
 use serde_yaml;
-use serde_json;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file, write_readme};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, write_readme};
 
 impl super::HugoMigrator {
     pub(super) fn migrate_content(&self, source_dir: &Path, dest_dir: &Path, verbose: bool, result: &mut MigrationResult) -> Result<(), String> {
@@ -276,7 +275,7 @@ Pages in Rustyll:
                             .to_string_lossy();
                         
                         let is_index = file_name == "index.md" || file_name == "_index.md";
-                        let mut is_page = true;
+                        let is_page = true;
                         
                         // Determine destination and handle special files
                         let (dest_path, permalink) = if is_index {

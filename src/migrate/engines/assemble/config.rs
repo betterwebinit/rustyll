@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::fs;
 use serde_json;
-use serde_yaml;
 use crate::migrate::{MigrationResult, MigrationChange, ChangeType, copy_file};
 
 impl super::AssembleMigrator {

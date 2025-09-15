@@ -1,6 +1,5 @@
 pub mod yaml_parser;
 
-pub use yaml_parser::parse_yaml;
 
 use crate::front_matter::types::front_matter::FrontMatter;
 use std::error::Error;

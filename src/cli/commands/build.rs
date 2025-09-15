@@ -42,7 +42,8 @@ pub async fn handle_build_command(
             config_paths = cfg_files.iter().map(|s| s.as_str()).collect();
         }
 
-        let mut config = match config::load_config(PathBuf::from("."), Some(config_paths.iter().map(|p| PathBuf::from(*p)).collect())) {
+        let config_opt = if config_paths.is_empty() { None } else { Some(config_paths.iter().map(|p| PathBuf::from(*p)).collect()) };
+        let mut config = match config::load_config(PathBuf::from("."), config_opt) {
             Ok(cfg) => cfg,
             Err(e) => {
                 error!("Failed to load config: {}", e);

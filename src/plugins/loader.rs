@@ -17,7 +17,7 @@ impl PluginLoader {
     }
 
     /// Load a Rust plugin from a shared library
-    pub fn load_rust_plugin(&self, path: &Path, config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_rust_plugin(&self, path: &Path, _config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
         // Note: Dynamic loading of Rust plugins requires unsafe code and careful ABI management
         // For now, we'll log a warning and return OK
         warn!("Dynamic Rust plugin loading from {:?} not yet implemented", path);
@@ -33,7 +33,7 @@ impl PluginLoader {
     }
 
     /// Load a WebAssembly plugin
-    pub fn load_wasm_plugin(&self, path: &Path, config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_wasm_plugin(&self, path: &Path, _config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
         warn!("WebAssembly plugin loading from {:?} not yet implemented", path);
 
         // In a full implementation, this would:
@@ -46,7 +46,7 @@ impl PluginLoader {
     }
 
     /// Load a JavaScript plugin (using a JS runtime)
-    pub fn load_js_plugin(&self, path: &Path, config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_js_plugin(&self, path: &Path, _config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
         warn!("JavaScript plugin loading from {:?} not yet implemented", path);
 
         // In a full implementation, this would:
@@ -59,7 +59,7 @@ impl PluginLoader {
     }
 
     /// Load a Python plugin (using PyO3)
-    pub fn load_python_plugin(&self, path: &Path, config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_python_plugin(&self, path: &Path, _config: &PluginConfig) -> Result<(), Box<dyn std::error::Error>> {
         warn!("Python plugin loading from {:?} not yet implemented", path);
 
         // In a full implementation with PyO3:

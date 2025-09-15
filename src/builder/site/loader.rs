@@ -4,9 +4,17 @@ use log::debug;
 
 use crate::directory::DirectoryStructure;
 use crate::builder::types::BoxResult;
+use crate::front_matter::FrontMatter;
+
+/// Layout information including content and metadata
+#[derive(Debug, Clone)]
+pub struct LayoutInfo {
+    pub content: String,
+    pub front_matter: FrontMatter,
+}
 
 /// Load layouts from the layouts directory
-pub fn load_layouts(dirs: &DirectoryStructure) -> BoxResult<HashMap<String, String>> {
+pub fn load_layouts(dirs: &DirectoryStructure) -> BoxResult<HashMap<String, LayoutInfo>> {
     let mut layouts = HashMap::new();
     
     // First check the site layouts
@@ -22,7 +30,22 @@ pub fn load_layouts(dirs: &DirectoryStructure) -> BoxResult<HashMap<String, Stri
                 // Read the layout file
                 match fs::read_to_string(&path) {
                     Ok(content) => {
-                        layouts.insert(layout_name, content);
+                        // Extract front matter from layout if it exists
+                        let (front_matter, processed_content) = if content.starts_with("---") {
+                            // Parse front matter and extract both front matter and content
+                            match crate::front_matter::utils::extract_front_matter(&content) {
+                                Ok((front_matter, body)) => (front_matter, body),
+                                Err(_) => (FrontMatter::default(), content), // If parsing fails, use original content
+                            }
+                        } else {
+                            (FrontMatter::default(), content)
+                        };
+
+                        let layout_info = LayoutInfo {
+                            content: processed_content,
+                            front_matter,
+                        };
+                        layouts.insert(layout_name, layout_info);
                     },
                     Err(e) => {
                         debug!("Error reading layout file {}: {}", file_name, e);
@@ -48,7 +71,22 @@ pub fn load_layouts(dirs: &DirectoryStructure) -> BoxResult<HashMap<String, Stri
                         // Read the layout file
                         match fs::read_to_string(&path) {
                             Ok(content) => {
-                                layouts.insert(layout_name, content);
+                                // Extract front matter from layout if it exists
+                                let (front_matter, processed_content) = if content.starts_with("---") {
+                                    // Parse front matter and extract both front matter and content
+                                    match crate::front_matter::utils::extract_front_matter(&content) {
+                                        Ok((front_matter, body)) => (front_matter, body),
+                                        Err(_) => (FrontMatter::default(), content), // If parsing fails, use original content
+                                    }
+                                } else {
+                                    (FrontMatter::default(), content)
+                                };
+
+                                let layout_info = LayoutInfo {
+                                    content: processed_content,
+                                    front_matter,
+                                };
+                                layouts.insert(layout_name, layout_info);
                             },
                             Err(e) => {
                                 debug!("Error reading theme layout file {}: {}", file_name, e);

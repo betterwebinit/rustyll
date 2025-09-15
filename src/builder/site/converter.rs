@@ -24,14 +24,14 @@ pub fn page_to_liquid(page: &Page) -> liquid::model::Value {
         obj.insert("date".into(), Value::scalar(date.to_rfc3339()));
     }
     
-    // Front matter properties
-    if let Some(title) = &page.front_matter.title {
-        obj.insert("title".into(), Value::scalar(title.clone()));
-    }
-    
-    if let Some(description) = &page.front_matter.description {
-        obj.insert("description".into(), Value::scalar(description.clone()));
-    }
+    // Front matter properties (always include title and description for Jekyll compatibility)
+    obj.insert("title".into(), Value::scalar(
+        page.front_matter.title.clone().unwrap_or_else(|| "".to_string())
+    ));
+
+    obj.insert("description".into(), Value::scalar(
+        page.front_matter.description.clone().unwrap_or_else(|| "".to_string())
+    ));
     
     if let Some(permalink) = &page.front_matter.permalink {
         obj.insert("permalink".into(), Value::scalar(permalink.clone()));

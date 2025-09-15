@@ -263,25 +263,25 @@ impl FrontMatter {
     pub fn to_liquid_object(&self) -> Object {
         let mut obj = Object::new();
         
-        // Add basic fields
-        if let Some(title) = &self.title {
-            obj.insert("title".into(), Value::scalar(title.clone()));
-        }
-        
+        // Add basic fields (always include title and description for Jekyll compatibility)
+        obj.insert("title".into(), Value::scalar(
+            self.title.clone().unwrap_or_else(|| "".to_string())
+        ));
+
+        obj.insert("description".into(), Value::scalar(
+            self.description.clone().unwrap_or_else(|| "".to_string())
+        ));
+
         if let Some(slug) = &self.slug {
             obj.insert("slug".into(), Value::scalar(slug.clone()));
         }
-        
+
         if let Some(layout) = &self.layout {
             obj.insert("layout".into(), Value::scalar(layout.clone()));
         }
-        
+
         if let Some(permalink) = &self.permalink {
             obj.insert("permalink".into(), Value::scalar(permalink.clone()));
-        }
-        
-        if let Some(description) = &self.description {
-            obj.insert("description".into(), Value::scalar(description.clone()));
         }
         
         // Handle dates

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use walkdir::WalkDir;
 use regex::Regex;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists};
 
 impl super::GitbookMigrator {
     pub(super) fn migrate_content(&self, source_dir: &Path, dest_dir: &Path, verbose: bool, result: &mut MigrationResult) -> Result<(), String> {

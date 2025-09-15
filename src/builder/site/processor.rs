@@ -16,12 +16,13 @@ use crate::collections::Collection;
 use crate::builder::page::Page;
 use crate::builder::types::BoxResult;
 use crate::liquid::create_globals;
+use crate::builder::site::loader::LayoutInfo;
 use html_escape;
 
 /// Process and render collections
 pub fn process_collections(
     collections: &mut HashMap<String, Collection>,
-    layouts: &HashMap<String, String>,
+    layouts: &HashMap<String, LayoutInfo>,
     parser: &liquid::Parser,
     site_data: &Object,
     markdown_renderer: &MarkdownRenderer,
@@ -86,7 +87,7 @@ pub fn process_collections(
         let layouts = Arc::new(layouts.clone());
         let parser = Arc::new(parser.clone());
         let site_data = Arc::new(site_data.clone());
-        let markdown_renderer = Arc::new(markdown_renderer.clone());
+        let markdown_renderer = Arc::new(markdown_renderer);
         let config = Arc::new(config.clone());
         let dirs = Arc::new(dirs.clone());
         
@@ -193,8 +194,14 @@ pub fn process_collections(
             }
         });
         
-        info!("Processed {}/{} documents in collection '{}'", 
-              collection_docs_count - *error_count.lock().unwrap(), 
+        let errors = *error_count.lock().unwrap();
+        let processed = if collection_docs_count >= errors {
+            collection_docs_count - errors
+        } else {
+            0
+        };
+        info!("Processed {}/{} documents in collection '{}'",
+              processed,
               collection_docs_count,
               label);
     }
@@ -213,7 +220,7 @@ pub fn process_collections(
 /// Process and render pages
 pub fn process_pages(
     pages: Vec<Page>,
-    layouts: &HashMap<String, String>,
+    layouts: &HashMap<String, LayoutInfo>,
     parser: &liquid::Parser,
     site_data: &Object,
     markdown_renderer: &MarkdownRenderer,
@@ -243,7 +250,7 @@ pub fn process_pages(
     let layouts = Arc::new(layouts.clone());
     let parser = Arc::new(parser.clone());
     let site_data = Arc::new(site_data.clone());
-    let markdown_renderer = Arc::new(markdown_renderer.clone());
+    let markdown_renderer = Arc::new(markdown_renderer);
     let config = Arc::new(config.clone());
     
     // Process pages in parallel
@@ -363,17 +370,17 @@ pub fn process_pages(
 pub fn apply_layout(
     _content: &str,
     layout_name: &str,
-    layouts: &HashMap<String, String>,
+    layouts: &HashMap<String, LayoutInfo>,
     parser: &liquid::Parser,
     globals: &Object,
     config: &Config
 ) -> BoxResult<String> {
-    // Get the layout content
-    let layout_content = layouts.get(layout_name)
+    // Get the layout info
+    let layout_info = layouts.get(layout_name)
         .ok_or_else(|| format!("Layout '{}' not found", layout_name))?;
-    
+
     // Create new template with the layout content
-    let template = parser.parse(layout_content)?;
+    let template = parser.parse(&layout_info.content)?;
     
     // Render the layout with the content
     let rendered = template.render(globals)?;
@@ -391,28 +398,12 @@ pub fn apply_layout(
 }
 
 /// Extract the parent layout name from a layout
-fn get_parent_layout(layout_name: &str, layouts: &HashMap<String, String>) -> Option<String> {
-    if let Some(layout_content) = layouts.get(layout_name) {
-        // Look for front matter in the layout
-        if layout_content.starts_with("---") {
-            if let Some(end_index) = layout_content.find("---\n") {
-                let front_matter = &layout_content[3..end_index];
-                
-                // Look for layout: line
-                for line in front_matter.lines() {
-                    if line.trim().starts_with("layout:") {
-                        let parent = line.trim()
-                            .strip_prefix("layout:")
-                            .map(|s| s.trim().to_string());
-                        
-                        if let Some(parent) = parent {
-                            // Don't return empty layouts
-                            if !parent.is_empty() {
-                                return Some(parent);
-                            }
-                        }
-                    }
-                }
+fn get_parent_layout(layout_name: &str, layouts: &HashMap<String, LayoutInfo>) -> Option<String> {
+    if let Some(layout_info) = layouts.get(layout_name) {
+        // Return the parent layout from the parsed front matter
+        if let Some(parent_layout) = &layout_info.front_matter.layout {
+            if !parent_layout.is_empty() {
+                return Some(parent_layout.clone());
             }
         }
     }

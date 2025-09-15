@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use toml;
 use crate::migrate::{MigrationResult, MigrationChange, ChangeType};

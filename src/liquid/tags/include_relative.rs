@@ -145,7 +145,7 @@ impl ParseTag for IncludeRelativeTag {
         info!("Include_relative tag remaining tokens: {:?}", all_remaining_tokens);
         
         // Reset arguments iterator
-        let mut arguments = all_remaining_tokens.iter();
+        let arguments = all_remaining_tokens.iter();
         
         // Handle "-" trim directive at the end of the filename
         if first_arg_str.ends_with('-') {
@@ -179,7 +179,7 @@ impl ParseTag for IncludeRelativeTag {
         
         // For regular paths, handle slashes directly in the filename
         // Remove quotes if present
-        let mut filename = first_arg_str.trim_matches('"').trim_matches('\'').to_string();
+        let filename = first_arg_str.trim_matches('"').trim_matches('\'').to_string();
         let mut tokens_for_params = Vec::new();
         
         // Collect parameter arguments

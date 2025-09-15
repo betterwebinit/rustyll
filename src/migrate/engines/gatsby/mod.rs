@@ -28,7 +28,7 @@ impl EngineMigrator for GatsbyMigrator {
     
     fn migrate(&self, options: &MigrationOptions) -> Result<MigrationResult, String> {
         // For now, just return a placeholder result
-        let mut result = MigrationResult {
+        let result = MigrationResult {
             engine_name: self.name().to_string(),
             changes: Vec::new(),
             warnings: vec!["Gatsby migration is not yet fully implemented".to_string()],

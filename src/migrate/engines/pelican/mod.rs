@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::fs;
 use crate::migrate::{
     EngineMigrator, MigrationOptions, MigrationResult, MigrationChange, ChangeType,
     create_dir_if_not_exists

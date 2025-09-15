@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::fs;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, write_readme};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType};
 
 impl super::HarpMigrator {
     pub(super) fn generate_readme(&self, dest_dir: &Path, result: &mut MigrationResult) -> Result<(), String> {

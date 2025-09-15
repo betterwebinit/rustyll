@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use chrono::{DateTime, Utc, NaiveDateTime, NaiveDate};
+use chrono::{DateTime, Utc, NaiveDateTime, NaiveDate, Datelike};
 use serde::{Serialize, Deserialize};
 
 use crate::front_matter::FrontMatter;
 use crate::config::{Config, CollectionConfig};
+use crate::config::permalink::PermalinkStyle;
 
 /// A collection of documents
 #[derive(Debug, Clone)]
@@ -333,12 +334,13 @@ impl Collection {
             return None;
         }
         
-        // Get permalink template, either from collection config or default
+        // Get permalink template, either from collection config or site config
         let permalink_template = if let Some(permalink) = &self.permalink {
             permalink.clone()
         } else if self.label == "posts" {
-            // Default permalink for posts
-            String::from("/:categories/:year/:month/:day/:title:output_ext")
+            // Use site-wide permalink setting for posts
+            let permalink_style = PermalinkStyle::from(site_config.permalink.as_str());
+            permalink_style.pattern()
         } else {
             // Default permalink for other collections
             String::from("/:collection/:path:output_ext")
@@ -371,8 +373,8 @@ impl Collection {
             replacements.insert(":hour".to_string(), date.format("%H").to_string());
             replacements.insert(":minute".to_string(), date.format("%M").to_string());
             replacements.insert(":second".to_string(), date.format("%S").to_string());
-            replacements.insert(":i_day".to_string(), date.format("%-d").to_string());
-            replacements.insert(":i_month".to_string(), date.format("%-m").to_string());
+            replacements.insert(":i_day".to_string(), date.day().to_string());
+            replacements.insert(":i_month".to_string(), date.month().to_string());
             
             // Also add ordinal day
             replacements.insert(":y_day".to_string(), date.format("%j").to_string());
@@ -436,8 +438,13 @@ fn parse_date_string(date: Option<String>) -> Option<DateTime<Utc>> {
         if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&date_str) {
             return Some(parsed.with_timezone(&Utc));
         }
-        
-        // Try other date formats
+
+        // Try Jekyll date format with timezone (YYYY-MM-DD HH:MM:SS +ZZZZ)
+        if let Ok(parsed) = chrono::DateTime::parse_from_str(&date_str, "%Y-%m-%d %H:%M:%S %z") {
+            return Some(parsed.with_timezone(&Utc));
+        }
+
+        // Try other date formats without timezone
         if let Ok(parsed) = NaiveDateTime::parse_from_str(&date_str, "%Y-%m-%d %H:%M:%S") {
             return Some(parsed.and_utc());
         }
@@ -446,6 +453,6 @@ fn parse_date_string(date: Option<String>) -> Option<DateTime<Utc>> {
             return Some(parsed.and_hms_opt(0, 0, 0).unwrap().and_utc());
         }
     }
-    
+
     None
 } 

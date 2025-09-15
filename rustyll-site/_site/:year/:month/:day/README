@@ -1,0 +1,14 @@
+<h1><a href="#posts-directory" aria-hidden="true" class="anchor" id="header-posts-directory"></a>Posts Directory</h1>
+<p>This directory contains all your blog posts migrated from Jekyll.</p>
+<h2><a href="#post-format" aria-hidden="true" class="anchor" id="header-post-format"></a>Post Format</h2>
+<p>Posts in Rustyll follow a similar format to Jekyll:</p>
+<ul>
+<li>Files are named with the format <code>YYYY-MM-DD-title.md</code></li>
+<li>Front matter is at the top of the file, enclosed in <code>—</code></li>
+<li>Content follows the front matter</li>
+</ul>
+<h2><a href="#changes-from-jekyll" aria-hidden="true" class="anchor" id="header-changes-from-jekyll"></a>Changes from Jekyll</h2>
+<ul>
+<li>Some front matter variables might have different names in Rustyll</li>
+<li>Liquid tag syntax might be slightly different</li>
+</ul>

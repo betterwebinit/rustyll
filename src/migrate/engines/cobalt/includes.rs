@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use walkdir::WalkDir;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists};
 
 pub(super) fn migrate_includes(
     source_dir: &Path,

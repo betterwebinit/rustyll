@@ -2,6 +2,8 @@ mod markdownify;
 mod relative_url;
 mod absolute_url;
 mod date_to_string;
+mod date_to_xmlschema;
+mod date;
 
 use liquid::ParserBuilder;
 use crate::config::Config;
@@ -28,7 +30,15 @@ pub fn register_filters(parser_builder: ParserBuilder, config: &Config) -> Parse
     // Add date_to_string filter
     let parser_builder = parser_builder
         .filter(date_to_string::DateToStringFilterParser);
-    
+
+    // Add date_to_xmlschema filter
+    let parser_builder = parser_builder
+        .filter(date_to_xmlschema::DateToXmlSchemaFilterParser);
+
+    // Add generic date filter (Jekyll-compatible)
+    let parser_builder = parser_builder
+        .filter(date::DateFilterParser);
+
     parser_builder
 }
 

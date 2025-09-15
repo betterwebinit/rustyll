@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use crate::migrate::{MigrationResult, MigrationChange, ChangeType};
-use yaml_rust::{YamlLoader, YamlEmitter};
+use yaml_rust::YamlLoader;
 use toml;
 
 pub(super) fn migrate_config(

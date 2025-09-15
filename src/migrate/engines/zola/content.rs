@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::fs;
 use walkdir::WalkDir;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file, write_readme};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists, copy_file};
 
 // Public module function that can be called from anywhere
 pub fn migrate_content(

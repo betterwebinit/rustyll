@@ -44,7 +44,7 @@ pub fn load_collections(config: &Config) -> BoxResult<HashMap<String, Collection
             continue;
         }
         
-        let mut collection = Collection::new(
+        let collection = Collection::new(
             label,
             collection_config,
             &config.source,

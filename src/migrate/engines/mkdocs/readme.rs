@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, write_readme};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType};
 
 pub(super) fn generate_readme(
     dest_dir: &Path,

@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use std::collections::HashMap;
-use crate::migrate::{MigrationResult, MigrationChange, ChangeType, create_dir_if_not_exists};
+use crate::migrate::{MigrationResult, MigrationChange, ChangeType};
 
 pub(super) fn migrate_config(
     source_dir: &Path,

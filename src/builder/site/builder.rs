@@ -196,7 +196,7 @@ pub fn build_site(config: &Config, _include_drafts: bool, _include_unpublished: 
     };
 
     // Create directory structure
-    let mut dirs = DirectoryStructure::from_config(config);
+    let dirs = DirectoryStructure::from_config(config);
     info!("Using source directory: {}", dirs.source.display());
     info!("Output will be generated in: {}", dirs.destination.display());
 
@@ -257,27 +257,11 @@ pub fn build_site(config: &Config, _include_drafts: bool, _include_unpublished: 
             cache.update_mtime(&path);
 
             // Track dependencies between layouts (for layout inheritance)
-            if let Some(layout_content) = layouts.get(name) {
-                // Check if layout has front matter with a parent layout
-                if layout_content.starts_with("---") {
-                    if let Some(end_index) = layout_content.find("---\n") {
-                        let front_matter = &layout_content[3..end_index];
-                        
-                        // Look for layout: line
-                        for line in front_matter.lines() {
-                            if line.trim().starts_with("layout:") {
-                                let parent_layout = line.trim()
-                                    .strip_prefix("layout:")
-                                    .map(|s| s.trim().to_string())
-                                    .filter(|s| !s.is_empty());
-                                
-                                if let Some(parent) = parent_layout {
-                                    let parent_path = dirs.layouts_dir.join(format!("{}.html", parent));
-                                    cache.add_dependency(&path, &parent_path);
-                                }
-                            }
-                        }
-                    }
+            if let Some(layout_info) = layouts.get(name) {
+                // Check if layout has a parent layout in its front matter
+                if let Some(parent_layout) = &layout_info.front_matter.layout {
+                    let parent_path = dirs.layouts_dir.join(format!("{}.html", parent_layout));
+                    cache.add_dependency(&path, &parent_path);
                 }
             }
         }

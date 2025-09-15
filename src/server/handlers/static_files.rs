@@ -6,7 +6,7 @@ use axum::{
 };
 use tower_http::services::ServeDir;
 use std::path::{Path as FilePath, PathBuf};
-use log::{debug, error};
+use log::{debug, error, info};
 use std::fs;
 use std::io::ErrorKind;
 
@@ -25,23 +25,28 @@ const DIRECTORY_INDEX: [&str; 9] = [
 
 /// Create a router for serving static files from a directory
 pub fn create_static_files_handler(
-    directory: PathBuf, 
+    directory: PathBuf,
     show_dir_listing: bool
 ) -> Router {
     let serve_dir = ServeDir::new(&directory)
         .precompressed_gzip()
         .precompressed_br()
-        .append_index_html_on_directories(!show_dir_listing);
-    
-    Router::new().nest_service("/", serve_dir)
+        .append_index_html_on_directories(true); // Always try to serve index.html for directories
+
+    info!("🗂️ [VERBOSE] Creating static file handler for: {}, append_index: true", directory.display());
+
+    // Use fallback_service for static files since nesting at root is not supported
+    Router::new().fallback_service(serve_dir)
 }
 
 /// Find an index file in the directory, trying all Jekyll-compatible index names
 pub async fn find_index_file(directory: &FilePath) -> Option<Response> {
+    info!("🔍 [VERBOSE] Looking for index file in directory: {}", directory.display());
     for index_name in &DIRECTORY_INDEX {
         let index_path = directory.join(index_name);
+        debug!("🔍 [VERBOSE] Checking for index file: {}", index_path.display());
         if index_path.exists() && index_path.is_file() {
-            debug!("Found index file: {}", index_path.display());
+            info!("✅ [VERBOSE] Found index file: {}", index_path.display());
             match fs::read(&index_path) {
                 Ok(content) => {
                     let mime_type = mime_guess::from_path(&index_path)
@@ -60,15 +65,17 @@ pub async fn find_index_file(directory: &FilePath) -> Option<Response> {
             }
         }
     }
+    info!("❌ [VERBOSE] No index file found in directory: {}", directory.display());
     None
 }
 
 /// Handle 404 errors with a custom error page if available
 pub fn handle_not_found(root_dir: &FilePath) -> Response {
+    info!("🚫 [VERBOSE] Handling 404 error for root dir: {}", root_dir.display());
     // Try to serve a custom 404.html file if it exists
     let custom_404 = root_dir.join("404.html");
     if custom_404.exists() {
-        debug!("Using custom 404 page: {}", custom_404.display());
+        info!("📄 [VERBOSE] Using custom 404 page: {}", custom_404.display());
         match fs::read(&custom_404) {
             Ok(content) => {
                 return Response::builder()

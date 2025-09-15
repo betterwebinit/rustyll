@@ -3,7 +3,6 @@ pub mod front_matter;
 
 // Export the default values
 pub use values::*;
-pub use front_matter::*;
 
 /// Default excludes - returns Option<Vec<String>> to match the expected type
 pub fn default_exclude() -> Option<Vec<String>> {

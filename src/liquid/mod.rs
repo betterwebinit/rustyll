@@ -174,13 +174,28 @@ pub fn create_site_object(config: &Config) -> Object {
     github.insert("pages".into(), Value::Object(pages));
     
     site.insert("github".into(), Value::Object(github));
-    
+
+    // Add plugins array (for Jekyll compatibility)
+    let plugins = if !config.plugins.is_empty() {
+        config.plugins.iter()
+            .map(|p| Value::scalar(p.clone()))
+            .collect()
+    } else {
+        // Default Jekyll plugins that themes might expect
+        vec![
+            Value::scalar("jekyll-feed"),
+            Value::scalar("jekyll-seo-tag"),
+            Value::scalar("jekyll-sitemap"),
+        ]
+    };
+    site.insert("plugins".into(), Value::Array(plugins));
+
     // Debug output all available site variables
     log::debug!("Site variables available in templates:");
-    for (key, value) in &site {
-        log::debug!("- site.{}: {:?}", key, value);
+    for (key, _value) in &site {
+        log::debug!("- site.{}", key);
     }
-    
+
     site
 }
 
