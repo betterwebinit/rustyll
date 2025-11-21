@@ -4,4 +4,4 @@
 /.jekyll-cache
 /.rustyll-cache
 /demo_content
-jekyll-code
+jekyll-code*:*
