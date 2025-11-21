@@ -4,14 +4,15 @@ use log::{info, debug, error};
 /// Preprocesses liquid templates to fix issues with include tags containing slashes
 pub fn preprocess_liquid(content: &str) -> String {
     // Create regex to find include tags with paths containing slashes
-    let include_regex = Regex::new(r#"(\{%\s*include\s+)([^\s"']+/[^\s"']+)(\s+.*?%\}|\s*%\})"#)
+    // This regex handles paths like "components/rankings/criteria-methodology.html" and "content/devops/introducao.md"
+    let include_regex = Regex::new(r#"(\{%\s*-?\s*include\s+)([a-zA-Z0-9_./-]+(?:/[a-zA-Z0-9_./-]+)*)(\s+.*?-?\s*%\}|\s*-?\s*%\})"#)
         .unwrap_or_else(|e| {
             error!("Failed to compile include regex: {}", e);
             Regex::new(r"a^").unwrap() // This will never match anything
         });
     
     // Create regex to find include_relative tags with paths containing slashes
-    let include_relative_regex = Regex::new(r#"(\{%\s*include_relative\s+)([^\s"']+/[^\s"']+)(\s+.*?%\}|\s*%\})"#)
+    let include_relative_regex = Regex::new(r#"(\{%\s*-?\s*include_relative\s+)([a-zA-Z0-9_./-]+(?:/[a-zA-Z0-9_./-]+)*)(\s+.*?-?\s*%\}|\s*-?\s*%\})"#)
         .unwrap_or_else(|e| {
             error!("Failed to compile include_relative regex: {}", e);
             Regex::new(r"a^").unwrap() // This will never match anything
@@ -35,12 +36,61 @@ pub fn preprocess_liquid(content: &str) -> String {
         let prefix = &caps[1];   // The part before the path ({% include_relative )
         let path = &caps[2];     // The path with slashes
         let suffix = &caps[3];   // The part after the path (parameters and closing %})
-        
+
         info!("Preprocessing include_relative tag: path '{}' found with slashes", path);
         let quoted_path = format!("\"{}\"", path);
-        
+
         // Return the fixed include tag with quoted path
         format!("{}{}{}", prefix, quoted_path, suffix)
+    }).to_string();
+
+    // Handle the specific pattern: {% capture var %}{% include path/with/slash.ext %}{% endcapture %}
+    let capture_inline_include_regex = Regex::new(r#"(\{%\s*capture\s+[^%]+%\}\s*\{%\s*include\s+)([a-zA-Z0-9_./-]+/[a-zA-Z0-9_./-]+)(\s*%\}\s*\{%\s*endcapture\s*%\})"#)
+        .unwrap_or_else(|e| {
+            error!("Failed to compile capture inline include regex: {}", e);
+            Regex::new(r"a^").unwrap() // This will never match anything
+        });
+
+    let content = capture_inline_include_regex.replace_all(&content, |caps: &regex::Captures| {
+        let prefix = &caps[1];   // {% capture var %}{% include
+        let path = &caps[2];     // The path with slashes
+        let suffix = &caps[3];   // %}{% endcapture %}
+
+        // Check if the path is already quoted
+        if path.starts_with('"') && path.ends_with('"') {
+            // Already quoted, return as is
+            format!("{}{}{}", prefix, path, suffix)
+        } else {
+            info!("Preprocessing capture inline include: path '{}' found with slashes", path);
+            let quoted_path = format!("\"{}\"", path);
+            // Return the fixed include tag with quoted path
+            format!("{}{}{}", prefix, quoted_path, suffix)
+        }
+    }).to_string();
+
+    // Handle any remaining include statements that weren't caught by the above patterns
+    // This is a more general pattern that catches include statements with slashes anywhere
+    let general_include_regex = Regex::new(r#"(\{%\s*-?\s*include\s+)([a-zA-Z0-9_./-]+/[a-zA-Z0-9_./-]+)(\s+.*?%\}|%\})"#)
+        .unwrap_or_else(|e| {
+            error!("Failed to compile general include regex: {}", e);
+            Regex::new(r"a^").unwrap() // This will never match anything
+        });
+
+    let content = general_include_regex.replace_all(&content, |caps: &regex::Captures| {
+        let prefix = &caps[1];   // The part before the path ({% include )
+        let path = &caps[2];     // The path with slashes
+        let suffix = &caps[3];   // The part after the path (parameters and closing %})
+
+        // Check if the path is already quoted
+        if path.starts_with('"') && path.ends_with('"') {
+            // Already quoted, return as is
+            format!("{}{}{}", prefix, path, suffix)
+        } else {
+            info!("Preprocessing general include tag: path '{}' found with slashes", path);
+            let quoted_path = format!("\"{}\"", path);
+            // Return the fixed include tag with quoted path
+            format!("{}{}{}", prefix, quoted_path, suffix)
+        }
     }).to_string();
     
     // Also handle trim modifiers at the end of include paths

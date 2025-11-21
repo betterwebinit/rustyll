@@ -5,6 +5,7 @@ use log::debug;
 use crate::directory::DirectoryStructure;
 use crate::builder::types::BoxResult;
 use crate::front_matter::FrontMatter;
+use crate::liquid::preprocess;
 
 /// Layout information including content and metadata
 #[derive(Debug, Clone)]
@@ -42,7 +43,7 @@ pub fn load_layouts(dirs: &DirectoryStructure) -> BoxResult<HashMap<String, Layo
                         };
 
                         let layout_info = LayoutInfo {
-                            content: processed_content,
+                            content: preprocess::preprocess_liquid(&processed_content),
                             front_matter,
                         };
                         layouts.insert(layout_name, layout_info);
@@ -83,7 +84,7 @@ pub fn load_layouts(dirs: &DirectoryStructure) -> BoxResult<HashMap<String, Layo
                                 };
 
                                 let layout_info = LayoutInfo {
-                                    content: processed_content,
+                                    content: preprocess::preprocess_liquid(&processed_content),
                                     front_matter,
                                 };
                                 layouts.insert(layout_name, layout_info);

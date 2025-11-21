@@ -7,6 +7,7 @@ use log::{info, debug};
 use super::Plugin;
 
 /// Registry for managing loaded plugins
+#[allow(dead_code)]
 pub struct PluginRegistry {
     /// Loaded plugins indexed by name
     plugins: HashMap<String, Arc<dyn Plugin>>,

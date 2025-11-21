@@ -9,7 +9,8 @@ use crate::migrate::{MigrationResult, MigrationChange, ChangeType, copy_file, cr
 #[derive(Debug, Deserialize)]
 struct HugoConfig {
     title: Option<String>,
-    baseURL: Option<String>,
+    #[serde(rename = "baseURL")]
+    base_url: Option<String>,
     #[serde(rename = "languageCode")]
     language_code: Option<String>,
     theme: Option<String>,
@@ -108,7 +109,7 @@ impl super::HugoMigrator {
             
             // Create a new compatible _config.yml
             let site_title = config.title.as_deref().unwrap_or("Hugo Site");
-            let site_url = config.baseURL.as_deref().unwrap_or("");
+            let site_url = config.base_url.as_deref().unwrap_or("");
             let site_language = config.language_code.as_deref().unwrap_or("en");
             let site_theme = config.theme.as_deref().unwrap_or("default");
             

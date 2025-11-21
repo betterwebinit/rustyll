@@ -1,6 +1,6 @@
 mod filters;
 mod tags;
-mod preprocess;
+pub mod preprocess;
 
 use std::collections::HashMap;
 use std::error::Error;

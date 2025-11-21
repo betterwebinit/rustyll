@@ -4,6 +4,7 @@ mod absolute_url;
 mod date_to_string;
 mod date_to_xmlschema;
 mod date;
+mod number_with_delimiter;
 
 use liquid::ParserBuilder;
 use crate::config::Config;
@@ -38,6 +39,10 @@ pub fn register_filters(parser_builder: ParserBuilder, config: &Config) -> Parse
     // Add generic date filter (Jekyll-compatible)
     let parser_builder = parser_builder
         .filter(date::DateFilterParser);
+
+    // Add number_with_delimiter filter
+    let parser_builder = parser_builder
+        .filter(number_with_delimiter::NumberWithDelimiterFilterParser);
 
     parser_builder
 }

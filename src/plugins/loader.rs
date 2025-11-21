@@ -73,12 +73,14 @@ impl PluginLoader {
 }
 
 /// Example of a plugin loaded from external source
+#[allow(dead_code)]
 pub struct ExternalPlugin {
     name: String,
     // Future: Add handle to loaded library/runtime
 }
 
 impl ExternalPlugin {
+    #[allow(dead_code)]
     pub fn new(name: String) -> Self {
         Self { name }
     }

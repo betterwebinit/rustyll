@@ -294,6 +294,7 @@ pub mod builtin {
     use super::*;
 
     /// SEO optimization plugin
+    #[allow(dead_code)]
     pub struct SeoPlugin {
         metadata: PluginMetadata,
         config: PluginConfig,
@@ -355,6 +356,7 @@ pub mod builtin {
     }
 
     /// Feed generation plugin
+    #[allow(dead_code)]
     pub struct FeedPlugin {
         metadata: PluginMetadata,
         config: PluginConfig,
