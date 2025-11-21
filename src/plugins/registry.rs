@@ -15,6 +15,7 @@ pub struct PluginRegistry {
     load_order: Vec<String>,
 }
 
+#[allow(dead_code)]
 impl PluginRegistry {
     /// Create a new plugin registry
     pub fn new() -> Self {

@@ -300,6 +300,7 @@ pub mod builtin {
         config: PluginConfig,
     }
 
+    #[allow(dead_code)]
     impl SeoPlugin {
         pub fn new() -> Self {
             Self {
@@ -362,6 +363,7 @@ pub mod builtin {
         config: PluginConfig,
     }
 
+    #[allow(dead_code)]
     impl FeedPlugin {
         pub fn new() -> Self {
             Self {
