@@ -8,7 +8,7 @@ license = "AGPL-3.0"
 repository = "https://github.com/betterwebinit/rustyll"
 homepage = "https://rustyll.better-web.org"
 documentation = "https://rustyll.better-web.org"
-keywords = ["static-site-generator", "jekyll", "markdown", "liquid", "ssg"]
+keywords = ["ssg", "jekyll", "markdown", "liquid", "static-site"]
 categories = ["command-line-utilities", "web-programming"]
 readme = "README.md"
 
