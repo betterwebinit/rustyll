@@ -26,7 +26,7 @@ const DIRECTORY_INDEX: [&str; 9] = [
 /// Create a router for serving static files from a directory
 pub fn create_static_files_handler(
     directory: PathBuf,
-    show_dir_listing: bool
+    _show_dir_listing: bool
 ) -> Router {
     let serve_dir = ServeDir::new(&directory)
         .precompressed_gzip()

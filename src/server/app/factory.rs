@@ -1,20 +1,16 @@
 use axum::{
     Router,
-    extract::Path,
     http::{StatusCode, header, Request},
-    routing::get,
     response::{IntoResponse, Response},
     body::Body,
 };
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use tower_http::services::ServeDir;
-use tower::ServiceExt;
 use std::path::{Path as FilePath, PathBuf};
 use std::sync::Arc;
 use std::fs;
-use log::{info, debug};
+use log::info;
 
 use crate::server::handlers::{handle_not_found, create_directory_listing};
 use crate::server::config::ServerConfig;

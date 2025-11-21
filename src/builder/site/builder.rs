@@ -269,6 +269,7 @@ pub fn build_site(config: &Config, _include_drafts: bool, _include_unpublished: 
 
     // Copy static files (skip in incremental mode if not modified)
     info!("Copying static files...");
+    #[allow(unused_assignments)]
     let mut copied_count = 0;
 
     // Use a thread pool for parallel file copying
