@@ -55,7 +55,7 @@ pub fn load_collections(config: &Config) -> BoxResult<HashMap<String, Collection
     }
     
     // Load documents for each collection
-    for (label, collection) in &mut collections {
+    for (_label, collection) in &mut collections {
         load_collection_documents(collection, config)?;
     }
     

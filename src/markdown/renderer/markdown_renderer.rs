@@ -168,7 +168,7 @@ impl<'a> MarkdownRenderer<'a> {
     pub fn generate_toc(&self, html: &str) -> String {
         let headings = extract_headings(html);
         match headings {
-            Ok(h) => {
+            Ok(_h) => {
                 // In the future, use TocOptions here
                 match generate_toc(html) {
                     Ok(toc) => toc,

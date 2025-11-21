@@ -34,14 +34,14 @@ impl DirectoryStructure {
     pub fn from_config(config: &Config) -> Self {
         // Create source-relative path builders for common directories
         let source = &config.source;
-        let destination = &config.destination;
-        
+        let _destination = &config.destination;
+
         // Create structure with paths relative to source
-        let layouts_dir = source.join(&config.layouts_dir);
-        let includes_dir = source.join(&config.includes_dir);
+        let _layouts_dir = source.join(&config.layouts_dir);
+        let _includes_dir = source.join(&config.includes_dir);
         let posts_dir = source.join(&config.posts_dir);
         let drafts_dir = source.join(&config.drafts_dir);
-        let data_dir = source.join(&config.data_dir);
+        let _data_dir = source.join(&config.data_dir);
         
         // Default directory names for sass and plugins
         let sass_dir = source.join("_sass");

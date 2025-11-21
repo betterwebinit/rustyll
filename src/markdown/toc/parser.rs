@@ -31,7 +31,7 @@ impl TocHeading {
     }
 
     /// Render this heading and its children as HTML
-    pub fn to_html(&self, current_level: usize) -> String {
+    pub fn to_html(&self, _current_level: usize) -> String {
         let mut html = String::new();
 
         // Add the current heading as a list item with link
@@ -296,7 +296,7 @@ impl Default for TocOptions {
 }
 
 /// Generate TOC with custom options
-pub fn generate_toc_with_options(html: &str, options: &TocOptions) -> BoxResult<String> {
+pub fn generate_toc_with_options(_html: &str, _options: &TocOptions) -> BoxResult<String> {
     // Temporarily return empty string due to compilation issues
     Ok(String::new())
 }

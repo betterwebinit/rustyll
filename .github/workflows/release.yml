@@ -80,6 +80,8 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
 
       - name: Build binary
+        env:
+          RUSTFLAGS: ""
         run: cargo build --release --target ${{ matrix.target }} --verbose
 
       - name: Prepare binary (Unix)

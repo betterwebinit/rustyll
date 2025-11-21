@@ -62,7 +62,7 @@ impl SyntaxHighlighter {
     /// Highlight a specific code block with specified language
     pub fn highlight_code(&self, code: &str, lang: &str) -> String {
         // Get the theme
-        let theme = self.theme_set.themes.get(&self.current_theme).unwrap_or_else(|| {
+        let _theme = self.theme_set.themes.get(&self.current_theme).unwrap_or_else(|| {
             // Fallback to default theme
             self.theme_set.themes.get("InspiredGitHub").unwrap()
         });
