@@ -1,9 +1,16 @@
 [package]
 name = "rustyll"
-version = "1.0.0"
+version = "0.8.0"
 edition = "2021"
-description = "A fast Jekyll-compatible static site generator written in Rust"
+description = "A blazing fast, Jekyll-compatible static site generator written in Rust"
 authors = ["Rustyll Team"]
+license = "AGPL-3.0"
+repository = "https://github.com/betterwebinit/rustyll"
+homepage = "https://rustyll.better-web.org"
+documentation = "https://rustyll.better-web.org"
+keywords = ["static-site-generator", "jekyll", "markdown", "liquid", "ssg"]
+categories = ["command-line-utilities", "web-programming"]
+readme = "README.md"
 
 [features]
 default = []
