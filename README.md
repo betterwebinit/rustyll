@@ -220,35 +220,43 @@ my-site/
 
 > **Note:** This roadmap is not exhaustive and may change based on community feedback and project priorities.
 
-### Q3 2023
-- [x] Initial release and core functionality
+### Q4 2025 (Current) ✅
+- [x] Initial release v0.8.0 and core functionality
 - [x] Jekyll compatibility layer
-- [x] Advanced markdown rendering
-- [x] Basic liquid templating
-
-### Q4 2023
+- [x] Advanced markdown rendering with syntax highlighting
+- [x] Liquid templating with custom filters and tags
 - [x] Improved asset pipeline
-- [x] Performance optimizations
-- [x] Advanced front matter processing
-- [ ] Plugin system improvements
+- [x] Performance optimizations (10-100x faster than Jekyll)
+- [x] Advanced front matter processing (YAML, TOML, JSON)
+- [x] Migration tools for Jekyll and other SSGs
+- [x] Development server with live reload
+- [x] Plugin system foundation
 
-### Q1 2024
+### Q1 2026
+- [ ] Plugin system improvements and documentation
 - [ ] JavaScript/CSS bundling and minification
+- [ ] Enhanced test coverage
+- [ ] Performance benchmarking suite
+- [ ] Binary distributions for all platforms
+
+### Q2 2026
 - [ ] Enhanced internationalization support
 - [ ] Content API for headless CMS usage
 - [ ] Advanced caching mechanisms
-
-### Q2 2024
 - [ ] Integration with DesignKit UI
 - [ ] Improved SEO tools
-- [ ] Enhanced migration tools
-- [ ] WebAssembly support
 
-### Future
+### Q3 2026
+- [ ] Enhanced migration tools for more SSGs
+- [ ] WebAssembly support for browser-based builds
 - [ ] Cloud build integration
 - [ ] Distributed content compilation
+
+### Future
 - [ ] AI-assisted content generation
 - [ ] Edge function integrations
+- [ ] Real-time collaboration features
+- [ ] Advanced analytics and insights
 
 Want to influence our roadmap? [Open an issue](https://github.com/better-web-initiative/rustyll/issues/new?template=feature_request.md) with your suggestion!
 
