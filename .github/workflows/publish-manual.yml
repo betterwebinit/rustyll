@@ -1,0 +1,49 @@
+name: Manual Publish to crates.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no actual publish)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+        continue-on-error: true
+
+      - name: Dry run publish
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "Running in DRY RUN mode - no actual publish will occur"
+          cargo publish --dry-run
+
+      - name: Publish to crates.io
+        if: ${{ !inputs.dry_run }}
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Notify success
+        if: success() && !inputs.dry_run
+        run: |
+          VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f 2)
+          echo "Successfully published rustyll v$VERSION to crates.io"
+          echo "View at: https://crates.io/crates/rustyll"

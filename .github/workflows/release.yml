@@ -1,0 +1,184 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-crate:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Verify version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          CARGO_VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f 2)
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) doesn't match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
+          echo "Version check passed: $CARGO_VERSION"
+
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  build-binaries:
+    name: Build release binaries
+    needs: publish-crate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: rustyll-linux-x86_64
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            name: rustyll-linux-x86_64-musl
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: rustyll-linux-aarch64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: rustyll-macos-x86_64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: rustyll-macos-aarch64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: rustyll-windows-x86_64.exe
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }} --verbose
+
+      - name: Prepare binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.name }}.tar.gz rustyll
+          mv ${{ matrix.name }}.tar.gz ${{ github.workspace }}/
+
+      - name: Prepare binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ${{ matrix.name }}.zip rustyll.exe
+          mv ${{ matrix.name }}.zip ${{ github.workspace }}/
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            *.tar.gz
+            *.zip
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release notes
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/}"
+          echo "Creating release for $TAG_VERSION"
+
+          # Use release notes if exists, otherwise use changelog
+          if [ -f "RELEASE_NOTES_${TAG_VERSION}.md" ]; then
+            cp "RELEASE_NOTES_${TAG_VERSION}.md" release_notes.md
+          elif [ -f "CHANGELOG.md" ]; then
+            echo "Release $TAG_VERSION" > release_notes.md
+            echo "" >> release_notes.md
+            echo "See CHANGELOG.md for details" >> release_notes.md
+          else
+            echo "Release $TAG_VERSION" > release_notes.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Calculate SHA256
+        id: sha
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          URL="https://github.com/betterwebinit/rustyll/archive/refs/tags/v${TAG_VERSION}.tar.gz"
+
+          # Download and calculate SHA256
+          curl -L "$URL" -o rustyll.tar.gz
+          SHA256=$(shasum -a 256 rustyll.tar.gz | cut -d ' ' -f 1)
+
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+
+      - name: Update Homebrew formula
+        run: |
+          # Update the formula with the correct SHA256
+          sed -i "s/sha256 \"\"/sha256 \"${{ steps.sha.outputs.sha256 }}\"/" rustyll.rb
+          sed -i "s/version \".*\"/version \"${{ steps.sha.outputs.version }}\"/" rustyll.rb || true
+
+          echo "Updated Homebrew formula:"
+          cat rustyll.rb
+
+      - name: Create formula artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: rustyll.rb
