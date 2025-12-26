@@ -11,7 +11,7 @@ lazy_static! {
     static ref MATH_BLOCK_REGEX: Regex = Regex::new(r"\$\$([\s\S]+?)\$\$").unwrap();
     
     // Regex for typographical improvements
-    static ref SMART_QUOTES_REGEX: Regex = Regex::new(r#"(^|[-—/\(\[\{"""\s])[''](.+?)['']([-.,:;!?\)\]\}""\s]|$)"#).unwrap();
+    static ref SMART_QUOTES_REGEX: Regex = Regex::new(r#"(^|[-—/\(\[\{\s])['"](.+?)['"]([-.,:;!?\)\]\}\s]|$)"#).unwrap();
     static ref EM_DASH_REGEX: Regex = Regex::new(r"---").unwrap();
     static ref EN_DASH_REGEX: Regex = Regex::new(r"--").unwrap();
     
@@ -169,8 +169,8 @@ impl<'a> MarkdownRenderer<'a> {
         let headings = extract_headings(html);
         match headings {
             Ok(_h) => {
-                // In the future, use TocOptions here
-                match generate_toc(html) {
+                let options = crate::markdown::toc::parser::TocOptions::default();
+                match crate::markdown::toc::parser::generate_toc_with_options(html, &options) {
                     Ok(toc) => toc,
                     Err(_) => String::new()
                 }
@@ -247,6 +247,9 @@ mod tests {
         let markdown = "```rust\nfn main() {\n    println!(\"Hello, World!\");\n}\n```";
         let html = renderer.render(markdown);
         
+        if !html.contains("<div class=\"highlight\">") {
+            panic!("HTML does not contain highlight div. HTML: {}", html);
+        }
         assert!(html.contains("<div class=\"highlight\">"));
         assert!(html.contains("<pre class=\"highlight rust\">"));
     }
@@ -259,9 +262,9 @@ mod tests {
         let markdown = "# Main Title\n\n## Section 1\n\nContent\n\n## Section 2\n\nMore content";
         let (html, toc) = renderer.render_with_toc(markdown);
         
-        assert!(toc.contains("<ul class=\"toc\">"));
-        assert!(toc.contains("<a href=\"#section-1\">"));
-        assert!(toc.contains("<a href=\"#section-2\">"));
+        assert!(toc.contains("class=\"toc\""));
+        assert!(toc.contains("href=\"#section-1\""));
+        assert!(toc.contains("href=\"#section-2\""));
     }
     
     #[test]

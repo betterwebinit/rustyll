@@ -47,11 +47,24 @@ impl SyntaxHighlighter {
     
     /// Process HTML content to add syntax highlighting to code blocks
     pub fn highlight_html(&self, html: &str) -> BoxResult<String> {
-        let pre_regex = Regex::new(r#"<pre><code( class="language-([^"]+)")?>([^<]+)</code></pre>"#)?;
+        // Regex to match pre and code tags and capture attributes and content
+        let pre_regex = Regex::new(r#"(?s)<pre([^>]*)>\s*<code([^>]*)>(.*?)</code>\s*</pre>"#)?;
+        let lang_regex = Regex::new(r#"lang="([^"]+)""#)?;
+        let class_regex = Regex::new(r#"class="language-([^"]+)""#)?;
         
         let html_highlighted = pre_regex.replace_all(html, |caps: &regex::Captures| {
+            let pre_attrs = &caps[1];
+            let code_attrs = &caps[2];
             let code = html_escape::decode_html_entities(&caps[3]).to_string();
-            let lang = caps.get(2).map(|m| m.as_str()).unwrap_or("text");
+            
+            // Try to get lang from pre attribute first
+            let mut lang = "text";
+            
+            if let Some(m) = lang_regex.captures(pre_attrs) {
+                lang = m.get(1).map(|m| m.as_str()).unwrap_or("text");
+            } else if let Some(m) = class_regex.captures(code_attrs) {
+                lang = m.get(1).map(|m| m.as_str()).unwrap_or("text");
+            }
             
             self.highlight_code(&code, lang)
         });

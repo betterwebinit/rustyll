@@ -1,5 +1,5 @@
 mod generator;
-mod parser;
+pub mod parser;
 
 pub use generator::generate_toc;
 pub use parser::extract_headings;

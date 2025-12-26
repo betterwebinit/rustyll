@@ -5,9 +5,10 @@ use serde::{Serialize, Deserialize};
 
 lazy_static! {
     static ref HEADING_REGEX: Regex = Regex::new(
-        r#"<h([1-6])(?:[^>]*)(?:id=["']([^"']+)["'])?(?:[^>]*)>(.*?)</h\1>"#
+        r#"<h([1-6])([^>]*)>([\s\S]*?)</h[1-6]>"#
     ).unwrap();
 
+    static ref ID_REGEX: Regex = Regex::new(r#"id=["']([^"']+)["']"#).unwrap();
     static ref TAG_REGEX: Regex = Regex::new(r"<[^>]*>").unwrap();
 }
 
@@ -139,7 +140,7 @@ impl TableOfContents {
         }
 
         // Reverse to maintain order
-        self.headings.reverse();
+        // self.headings.reverse();
     }
 
     /// Generate HTML for the table of contents
@@ -201,16 +202,18 @@ pub fn extract_headings(html: &str) -> BoxResult<Vec<(usize, String, String)>> {
 
     for cap in HEADING_REGEX.captures_iter(html) {
         let level: usize = cap[1].parse()?;
+        let attrs = &cap[2];
+        let content = &cap[3];
 
-        // Get ID from the heading or generate from text
-        let id = if let Some(id_match) = cap.get(2) {
-            id_match.as_str().to_string()
+        // Get ID from attributes
+        let id = if let Some(id_match) = ID_REGEX.captures(attrs) {
+            id_match[1].to_string()
         } else {
             // Generate ID from heading text
-            generate_id_from_text(&cap[3])
+            generate_id_from_text(content)
         };
 
-        let text = strip_html_tags(&cap[3]);
+        let text = strip_html_tags(content);
 
         headings.push((level, id, text));
     }
@@ -296,14 +299,8 @@ impl Default for TocOptions {
 }
 
 /// Generate TOC with custom options
-pub fn generate_toc_with_options(_html: &str, _options: &TocOptions) -> BoxResult<String> {
-    // Temporarily return empty string due to compilation issues
-    Ok(String::new())
-}
-
-// Original implementation commented out temporarily
-/*
-pub fn generate_toc_with_options_original(html: &str, options: &TocOptions) -> BoxResult<String> {
+/// Generate TOC with custom options
+pub fn generate_toc_with_options(html: &str, options: &TocOptions) -> BoxResult<String> {
     let flat_headings = extract_headings(html)?;
 
     // Filter headings by level and no_toc class
@@ -317,7 +314,7 @@ pub fn generate_toc_with_options_original(html: &str, options: &TocOptions) -> B
     }
 
     let list_tag = if options.ordered_list { "ol" } else { "ul" };
-    let mut html = format!(
+    let mut html_out = format!(
         r#"<{} id="{}" class="{}">"#,
         list_tag, options.list_id, options.list_class
     );
@@ -328,19 +325,19 @@ pub fn generate_toc_with_options_original(html: &str, options: &TocOptions) -> B
     for (level, id, text) in filtered {
         // Adjust nesting
         while current_level < level {
-            html.push_str(&format!(r#"<{} class="{}">"#, list_tag, options.sublist_class));
+            html_out.push_str(&format!(r#"<{} class="{}">"#, list_tag, options.sublist_class));
             current_level += 1;
             stack_depth += 1;
         }
 
         while current_level > level {
-            html.push_str(&format!("</{}></li>", list_tag));
+            html_out.push_str(&format!("</{}></li>", list_tag));
             current_level -= 1;
             stack_depth -= 1;
         }
 
         // Add item
-        html.push_str(&format!(
+        html_out.push_str(&format!(
             "<li class=\"{}\"><a href=\"#{}\"{}>{}</a>",
             options.item_class,
             id,
@@ -357,16 +354,15 @@ pub fn generate_toc_with_options_original(html: &str, options: &TocOptions) -> B
 
     // Close any remaining open tags
     for _ in 0..=stack_depth {
-        html.push_str("</li>");
+        html_out.push_str("</li>");
         if stack_depth > 0 {
-            html.push_str(&format!("</{}>", list_tag));
+            html_out.push_str(&format!("</{}>", list_tag));
         }
     }
 
-    html.push_str(&format!("</{}>", list_tag));
-    Ok(html)
+    html_out.push_str(&format!("</{}>", list_tag));
+    Ok(html_out)
 }
-*/
 
 #[cfg(test)]
 mod tests {
@@ -412,6 +408,11 @@ mod tests {
             <h3 id="installation">Installation</h3>
             <h1 id="usage">Usage</h1>
         "#;
+
+        let headings = extract_headings(html).unwrap();
+        if headings.is_empty() {
+             panic!("No headings found! HTML: {}", html);
+        }
 
         let toc = build_toc_from_html(html).unwrap();
         assert_eq!(toc.headings.len(), 2); // Two h1 headings

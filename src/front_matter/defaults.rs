@@ -55,17 +55,10 @@ fn apply_default_if_matches(
     }
     
     // Convert the default values to a FrontMatter instance and merge
-    let yaml_str = serde_yaml::to_string(&default.values)?;
-    let default_front_matter = FrontMatter::default();
+    let default_front_matter: FrontMatter = serde_yaml::from_value(default.values.clone())?;
     
-    // Apply defaults
-    if front_matter.title.is_none() && default_front_matter.title.is_some() {
-        front_matter.title = default_front_matter.title.clone();
-    }
-    
-    if front_matter.layout.is_none() && default_front_matter.layout.is_some() {
-        front_matter.layout = default_front_matter.layout.clone();
-    }
+    // Apply defaults using merge
+    front_matter.merge(&default_front_matter);
     
     Ok(())
 }
@@ -161,20 +154,10 @@ fn apply_defaults_from_list(
     
     if let Some(default) = default {
         // Convert the default values to a FrontMatter instance and merge
-        let yaml_str = serde_yaml::to_string(&default.values)?;
+        let default_front_matter: FrontMatter = serde_yaml::from_value(default.values.clone())?;
         
-        // Create a default front matter
-        let default_front_matter = FrontMatter::default();
-        
-        // Apply defaults for title
-        if front_matter.title.is_none() && default_front_matter.title.is_some() {
-            front_matter.title = default_front_matter.title.clone();
-        }
-        
-        // Apply defaults for layout
-        if front_matter.layout.is_none() && default_front_matter.layout.is_some() {
-            front_matter.layout = default_front_matter.layout.clone();
-        }
+        // Apply defaults using merge
+        front_matter.merge(&default_front_matter);
     }
     
     Ok(())
